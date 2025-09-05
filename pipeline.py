@@ -1,18 +1,13 @@
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Dict
 
 import geopandas as gpd
+import pandas as pd
 import yaml
 
 SETTINGS_TEMPLATE = Path("./settings_template.yml")
-
-def compute_bbox(vector_path: Path):
-    gdf = gpd.read_file(vector_path)
-    if gdf.crs is None or gdf.crs.to_epsg() != 4326:
-        gdf = gdf.to_crs(4326)
-    minx, miny, maxx, maxy = gdf.total_bounds
-    return minx, miny, maxx, maxy
 
 def update_settings(settings_template_path: Path, out_settings_path: Path, bbox_str: str, target_srid: int, case_id: str = None) -> None:
     with open(settings_template_path, "r", encoding="utf-8") as f:
@@ -30,22 +25,53 @@ def run_netascore(netascore_dir: Path) -> None:
     print(f"[compose] {' '.join(cmd)}")
     subprocess.run(cmd, cwd=netascore_dir, check=True)
 
-def export_result(gpkg_path: Path, out_geojson_path: Path):
-    if not gpkg_path.exists():
-        raise FileNotFoundError(f"GPKG file not found: {gpkg_path}")
-    gdf = gpd.read_file(gpkg_path, layer="edge")
+def export_netascore(netascore_path: Path, out_path: Path):
+    if not netascore_path.exists():
+        raise FileNotFoundError(f"GPKG file not found: {netascore_path}")
+    gdf = gpd.read_file(netascore_path, layer="edge")
     if gdf.empty:
-        raise ValueError(f"Layer 'edge' in {gpkg_path} contains no features")
+        raise ValueError(f"Layer 'edge' in {netascore_path} contains no features")
     if gdf.crs is None or gdf.crs.to_epsg() != 4326:
         gdf = gdf.to_crs(4326)
-    out_geojson_path.parent.mkdir(parents=True, exist_ok=True)
-    gdf.to_file(out_geojson_path, driver="GeoJSON")
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    gdf.to_file(out_path, driver="GeoJSON")
 
-def run_pipeline(vector_path: Path, netascore_dir: Path, job_dir: Path, target_srid: int, settings_template: Path = SETTINGS_TEMPLATE, case_id: str = None) -> Path:
+def export_stops(stops_path: Path, out_path: Path):
+    if not stops_path.exists():
+        raise FileNotFoundError(f"Stops file not found: {stops_path}")
+    gdf = gpd.read_file(stops_path)
+    if gdf.empty:
+        raise ValueError(f"{stops_path} contains no features")
+    if gdf.crs is None or gdf.crs.to_epsg() != 4326:
+        gdf = gdf.to_crs(4326)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    gdf.to_file(out_path, driver="GeoJSON")
+
+def run_pipeline(
+    od_cluster_a: Path,
+    od_cluster_b: Path,
+    od_table: Path,
+    stops: Path,
+    netascore_dir: Path,
+    job_dir: Path,
+    target_srid: int,
+    settings_template: Path = SETTINGS_TEMPLATE,
+    case_id: str = None
+) -> Dict[str, Path]:
     case_id = case_id or datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
 
     # 1) compute bbox
-    minx, miny, maxx, maxy = compute_bbox(vector_path)
+    gdf_a = gpd.read_file(od_cluster_a)
+    gdf_b = gpd.read_file(od_cluster_b)
+
+    if gdf_a.crs is None or gdf_a.crs.to_epsg() != 4326:
+        gdf_a = gdf_a.to_crs(4326)
+    if gdf_b.crs is None or gdf_b.crs.to_epsg() != 4326:
+        gdf_b = gdf_b.to_crs(4326)
+
+    gdf_combined = pd.concat([gdf_a, gdf_b], ignore_index=True)
+
+    minx, miny, maxx, maxy = gdf_combined.total_bounds
     bbox_str = f"{miny:.4f},{minx:.4f},{maxy:.4f},{maxx:.4f}"
     print(f"[bbox] {bbox_str}")
 
@@ -58,26 +84,42 @@ def run_pipeline(vector_path: Path, netascore_dir: Path, job_dir: Path, target_s
     run_netascore(netascore_dir)
     print("[compose] finished")
 
-    # 4) export result
-    gpkg_name = f"netascore_{case_id}.gpkg"
-    gpkg_path = netascore_dir / "data" / gpkg_name
-    out_geojson_path = job_dir / f"netascore_edge_{case_id}.geojson"
+    # 4) export NetAScore
+    netascore = netascore_dir / "data" / f"netascore_{case_id}.gpkg"
+    out_netascore_path = job_dir / f"export_netascore_{case_id}.geojson"
+    export_netascore(netascore, out_netascore_path)
+    print(f"[done] GeoJSON written: {out_netascore_path.resolve()}")
 
-    export_result(gpkg_path, out_geojson_path)
-    print(f"[done] GeoJSON written: {out_geojson_path.resolve()}")
-
-    return out_geojson_path
+    # 5) export stops
+    out_stops_path = job_dir / f"export_stops_{case_id}.geojson"
+    export_stops(stops, out_stops_path)
+    print(f"[done] GeoJSON written: {out_stops_path.resolve()}")
+    
+    return {
+        "netascore": out_netascore_path,
+        "stops": out_stops_path,
+    }
 
 def main():
-    vector_path = Path("./data/b_klynger_select.gpkg")
+    od_cluster_a = Path("./data/od_cluster_a.gpkg")
+    od_cluster_b = Path("./data/od_cluster_b.gpkg")
+    od_table = Path("./data/od_table.csv")
+    stops = Path("./data/stops.gpkg")
     netascore_dir = Path("/Users/robinwendel/Developer/mobility-lab/netascore")
     job_dir = Path("./jobs/manual")
     target_srid = 32632
 
     job_dir.mkdir(parents=True, exist_ok=True)
 
-    output_geojson = run_pipeline(vector_path=vector_path, netascore_dir=netascore_dir, job_dir=job_dir, target_srid=target_srid)
-    print(f"GeoJSON created at: {output_geojson}")
+    run_pipeline(
+        od_cluster_a=od_cluster_a,
+        od_cluster_b=od_cluster_b,
+        od_table=od_table,
+        stops=stops,
+        netascore_dir=netascore_dir,
+        job_dir=job_dir,
+        target_srid=target_srid
+    )
 
 if __name__ == "__main__":
     main()
