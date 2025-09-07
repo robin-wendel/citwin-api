@@ -4,7 +4,7 @@ import traceback
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.gzip import GZipMiddleware
@@ -12,7 +12,8 @@ from fastapi.responses import FileResponse, JSONResponse
 
 from pipeline import run_pipeline
 
-NETASCORE_DIR = Path("/Users/robinwendel/Developer/mobility-lab/netascore")
+# NETASCORE_DIR = Path("/Users/robinwendel/Developer/mobility-lab/netascore")
+NETASCORE_FILE = Path("./data/netascore.gpkg")
 BASE_JOBS_DIR = Path("./jobs")
 BASE_JOBS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -47,9 +48,10 @@ def job_worker():
                 od_cluster_b=Path(job["od_cluster_b"]),
                 od_table=Path(job["od_table"]),
                 stops=Path(job["stops"]),
-                netascore_dir=NETASCORE_DIR,
                 job_dir=Path(job["job_dir"]),
                 target_srid=int(job["target_srid"]),
+                # netascore_dir=NETASCORE_DIR,
+                netascore_file=NETASCORE_FILE,
             )
             with JOBS_LOCK:
                 job["status"] = "done"
