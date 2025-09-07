@@ -10,7 +10,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
-from pipeline import run_pipeline
+from pipeline.run import run_pipeline
 
 # NETASCORE_DIR = Path("/Users/robinwendel/Developer/mobility-lab/netascore")
 NETASCORE_FILE = Path("./data/netascore.gpkg")
