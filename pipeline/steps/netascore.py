@@ -4,7 +4,13 @@ from pathlib import Path
 import yaml
 
 
-def update_settings(settings_template_input_path: Path, settings_output_path: Path, case_id: str, target_srid: int, bbox_str: str):
+def update_settings(
+        settings_template_input_path: Path,
+        settings_output_path: Path,
+        case_id: str,
+        target_srid: int,
+        bbox_str: str
+):
     with open(settings_template_input_path, "r", encoding="utf-8") as f:
         settings = yaml.safe_load(f) or {}
 
