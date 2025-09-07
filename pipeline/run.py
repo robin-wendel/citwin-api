@@ -2,6 +2,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Dict
 
+import pandas as pd
+
 from pipeline.steps.import_data import read_gdf, concat_geodataframes, compute_bbox
 from pipeline.steps.netascore import update_settings, run_netascore
 from pipeline.steps.export_data import export_geojson
@@ -28,13 +30,19 @@ def run_pipeline(
 
     gdf_a = read_gdf(od_cluster_a)
     gdf_b = read_gdf(od_cluster_b)
+    df_t = pd.read_csv(od_table)
+    gdf_s = read_gdf(stops)
 
     gdf_combined = concat_geodataframes(gdf_a, gdf_b)
     bbox_str, bbox_srid = compute_bbox(gdf_combined)
-    print(f"[bbox] {bbox_str}")
+    print(f"[bbox_str] {bbox_str}")
+    print(f"[bbox_srid] {bbox_srid}")
 
     target_srid = target_srid or bbox_srid
     print(f"[target_srid] {target_srid}")
+
+    print(df_t.head())
+    print(gdf_s.head())
 
     if netascore_file is None:
         settings_template = settings_template or SETTINGS_TEMPLATE
