@@ -18,7 +18,7 @@ BASE_JOBS_DIR = Path("./jobs")
 BASE_JOBS_DIR.mkdir(parents=True, exist_ok=True)
 
 # ======================================================================================================================
-# worker + job queue
+# Jobs + Worker
 # ======================================================================================================================
 
 Job = Dict[str, Any]
@@ -26,6 +26,7 @@ JOBS: Dict[str, Job] = {}
 JOB_QUEUE: "queue.Queue[str]" = queue.Queue()
 JOBS_LOCK = threading.Lock()
 STOP_EVENT = threading.Event()
+
 
 def job_worker():
     while not STOP_EVENT.is_set():
@@ -66,6 +67,7 @@ def job_worker():
         finally:
             JOB_QUEUE.task_done()
 
+
 WORKER_THREAD = threading.Thread(target=job_worker, daemon=True)
 WORKER_THREAD.start()
 
@@ -76,13 +78,14 @@ WORKER_THREAD.start()
 app = FastAPI()
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
+
 @app.post("/jobs")
 async def create_job(
-    od_cluster_a: UploadFile = File(...),
-    od_cluster_b: UploadFile = File(...),
-    od_table: UploadFile = File(...),
-    stops: UploadFile = File(...),
-    target_srid: int = Form(...),
+        od_cluster_a: UploadFile = File(...),
+        od_cluster_b: UploadFile = File(...),
+        od_table: UploadFile = File(...),
+        stops: UploadFile = File(...),
+        target_srid: int = Form(...),
 ):
     job_id = str(uuid.uuid4())
     job_dir = (BASE_JOBS_DIR / job_id)
@@ -118,6 +121,7 @@ async def create_job(
 
     return {"job_id": job_id, "status": job["status"]}
 
+
 @app.get("/jobs/{job_id}")
 def get_job(job_id: str):
     with JOBS_LOCK:
@@ -125,6 +129,7 @@ def get_job(job_id: str):
     if not job:
         raise HTTPException(status_code=404, detail="job not found")
     return {k: v for k, v in job.items() if k != "traceback"}
+
 
 @app.get("/jobs/{job_id}/downloads")
 def list_downloads(job_id: str):
@@ -147,6 +152,7 @@ def list_downloads(job_id: str):
             })
 
     return JSONResponse(result)
+
 
 @app.get("/jobs/{job_id}/download/{key}")
 def download_output(job_id: str, key: str):

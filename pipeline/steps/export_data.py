@@ -4,7 +4,11 @@ from typing import Optional
 import geopandas as gpd
 
 
-def export_geojson(input_path: Path, output_path: Path, layer: Optional[str] = None):
+def export_geojson(
+        input_path: Path,
+        output_path: Path,
+        layer: Optional[str] = None
+):
     gdf = gpd.read_file(input_path, layer=layer) if layer else gpd.read_file(input_path)
 
     if gdf.empty:

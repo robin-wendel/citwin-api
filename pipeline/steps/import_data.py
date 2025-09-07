@@ -1,13 +1,7 @@
-from pathlib import Path
 from typing import Tuple
 
 import geopandas as gpd
 import pandas as pd
-
-
-def read_gdf(path: Path) -> gpd.GeoDataFrame:
-    gdf = gpd.read_file(path)
-    return ensure_wgs84(gdf)
 
 
 def ensure_wgs84(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:

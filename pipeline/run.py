@@ -3,8 +3,9 @@ from pathlib import Path
 from typing import Optional, Dict
 
 import pandas as pd
+import geopandas as gpd
 
-from pipeline.steps.import_data import read_gdf, concat_geodataframes, compute_bbox
+from pipeline.steps.import_data import ensure_wgs84, concat_geodataframes, compute_bbox
 from pipeline.steps.netascore import update_settings, run_netascore
 from pipeline.steps.export_data import export_geojson
 
@@ -12,26 +13,27 @@ SETTINGS_TEMPLATE = Path("../settings_template.yml")
 
 
 def run_pipeline(
-    od_cluster_a: Path,
-    od_cluster_b: Path,
-    od_table: Path,
-    stops: Path,
-    job_dir: Path,
-    case_id: Optional[str] = None,
-    target_srid: Optional[int] = None,
-    netascore_dir: Optional[Path] = None,
-    settings_template: Optional[Path] = None,
-    netascore_file: Optional[Path] = None,
+        od_cluster_a: Path,
+        od_cluster_b: Path,
+        od_table: Path,
+        stops: Path,
+        job_dir: Path,
+        case_id: Optional[str] = None,
+        target_srid: Optional[int] = None,
+        netascore_dir: Optional[Path] = None,
+        settings_template: Optional[Path] = None,
+        netascore_file: Optional[Path] = None,
 ) -> Dict[str, Path]:
     if netascore_file is None and netascore_dir is None:
-        raise ValueError("Provide either netascore_dir or netascore_file")
+        raise ValueError("provide either netascore_dir or netascore_file")
 
     case_id = case_id or datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
 
-    gdf_a = read_gdf(od_cluster_a)
-    gdf_b = read_gdf(od_cluster_b)
-    df_t = pd.read_csv(od_table)
-    gdf_s = read_gdf(stops)
+    gdf_a = ensure_wgs84(gpd.read_file(od_cluster_a))
+    gdf_b = ensure_wgs84(gpd.read_file(od_cluster_b))
+    df_t = pd.read_csv(od_table, delimiter=';')
+
+    gdf_s = ensure_wgs84(gpd.read_file(stops))
 
     gdf_combined = concat_geodataframes(gdf_a, gdf_b)
     bbox_str, bbox_srid = compute_bbox(gdf_combined)
