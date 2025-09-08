@@ -2,19 +2,19 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Dict
 
-import pandas as pd
 import geopandas as gpd
+import pandas as pd
 
+from pipeline.steps.disaggregate_data import distribute_points_in_raster, disaggregate_table_to_edges
 from pipeline.steps.import_data import ensure_wgs84, concat_geodataframes, compute_bbox
 from pipeline.steps.netascore import update_settings, run_netascore
-from pipeline.steps.export_data import export_geojson
 
 SETTINGS_TEMPLATE = Path("../settings_template.yml")
 
 
 def run_pipeline(
-        od_cluster_a: Path,
-        od_cluster_b: Path,
+        od_clusters_a: Path,
+        od_clusters_b: Path,
         od_table: Path,
         stops: Path,
         job_dir: Path,
@@ -23,28 +23,55 @@ def run_pipeline(
         netascore_dir: Optional[Path] = None,
         settings_template: Optional[Path] = None,
         netascore_file: Optional[Path] = None,
+        seed: Optional[int] = None,
 ) -> Dict[str, Path]:
-    if netascore_file is None and netascore_dir is None:
-        raise ValueError("provide either netascore_dir or netascore_file")
+    od_clusters_a_gdf = ensure_wgs84(gpd.read_file(od_clusters_a))
+    od_clusters_b_gdf = ensure_wgs84(gpd.read_file(od_clusters_b))
+    od_table_df = pd.read_csv(od_table, delimiter=';')
 
-    case_id = case_id or datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    od_points_a_gdf = distribute_points_in_raster(
+        polygon_gdf=od_clusters_a_gdf,
+        id_field="klynge_id",
+        count_field="Beboere",
+        seed=seed,
+    )
 
-    gdf_a = ensure_wgs84(gpd.read_file(od_cluster_a))
-    gdf_b = ensure_wgs84(gpd.read_file(od_cluster_b))
-    df_t = pd.read_csv(od_table, delimiter=';')
+    od_points_b_gdf = distribute_points_in_raster(
+        polygon_gdf=od_clusters_b_gdf,
+        id_field="klynge_id",
+        count_field="Arbejdere",
+        seed=seed,
+    )
 
-    gdf_s = ensure_wgs84(gpd.read_file(stops))
+    od_edges_gdf = disaggregate_table_to_edges(
+        od_points_a_gdf=od_points_a_gdf,
+        od_points_b_gdf=od_points_b_gdf,
+        od_table_df=od_table_df,
+        od_table_a_id_field="Bopael_klynge_id",
+        od_table_b_id_field="Arbejssted_klynge_id",
+        od_table_trips_field="Antal",
+        seed=seed,
+    )
 
-    gdf_combined = concat_geodataframes(gdf_a, gdf_b)
-    bbox_str, bbox_srid = compute_bbox(gdf_combined)
+    od_points_a_gdf.to_file(job_dir / "od_points_a.gpkg", driver="GPKG")
+    od_points_b_gdf.to_file(job_dir / "od_points_b.gpkg", driver="GPKG")
+    print("[od_points] finished")
+    od_edges_gdf.to_file(job_dir / "od_edges.gpkg", driver="GPKG")
+    print("[od_edges] finished")
+
+    od_clusters_gdf = concat_geodataframes(od_clusters_a_gdf, od_clusters_b_gdf)
+    bbox_str, bbox_srid = compute_bbox(od_clusters_gdf)
     print(f"[bbox_str] {bbox_str}")
     print(f"[bbox_srid] {bbox_srid}")
 
     target_srid = target_srid or bbox_srid
     print(f"[target_srid] {target_srid}")
 
-    print(df_t.head())
-    print(gdf_s.head())
+    # netascore
+    if netascore_file is None and netascore_dir is None:
+        raise ValueError("provide either netascore_dir or netascore_file")
+
+    case_id = case_id or datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
 
     if netascore_file is None:
         settings_template = settings_template or SETTINGS_TEMPLATE
@@ -59,41 +86,47 @@ def run_pipeline(
     else:
         netascore = netascore_file
 
-    netascore_output_path = job_dir / "export_netascore.geojson"
-    export_geojson(netascore, netascore_output_path, layer="edge")
-    print(f"[done] GeoJSON written: {netascore_output_path.resolve()}")
+    graph_edges_gdf = ensure_wgs84(gpd.read_file(netascore, layer="edge"))
+    graph_edges_gdf.to_file(job_dir / "graph_edges.gpkg", driver="GPKG")
+    print("[graph_edges] finished")
 
-    stops_output_path = job_dir / "export_stops.geojson"
-    export_geojson(stops, stops_output_path)
-    print(f"[done] GeoJSON written: {stops_output_path.resolve()}")
+    graph_nodes_gdf = ensure_wgs84(gpd.read_file(netascore, layer="node"))
+    graph_nodes_gdf.to_file(job_dir / "graph_nodes.gpkg", driver="GPKG")
+    print("[graph_nodes] finished")
+
+    stops_gdf = ensure_wgs84(gpd.read_file(stops))
+    stops_gdf.to_file(job_dir / "stops_updated.gpkg", driver="GPKG")
+    print("[stops_updated] finished")
 
     return {
-        "netascore": netascore_output_path,
-        "stops": stops_output_path,
+        "graph_edges": job_dir / "graph_edges.gpkg",
+        "graph_nodes": job_dir / "graph_nodes.gpkg",
+        "stops_updated": job_dir / "stops_updated.gpkg",
     }
 
 
 def main():
-    od_cluster_a = Path("../data/od_cluster_a.gpkg")
-    od_cluster_b = Path("../data/od_cluster_b.gpkg")
-    od_table = Path("../data/od_table.csv")
-    stops = Path("../data/stops.gpkg")
+    od_clusters_a = Path("../data/b_klynger.gpkg")
+    od_clusters_b = Path("../data/a_klynger.gpkg")
+    od_table = Path("../data/Data_2023_0099_Tabel_1.csv")
+    stops = Path("../data/dynlayer.gpkg")
     job_dir = Path("../jobs/manual")
     target_srid = 32632
     # netascore_dir = Path("/Users/robinwendel/Developer/mobility-lab/netascore")
-    netascore_file = Path("../data/netascore.gpkg")
+    netascore_file = Path("../data/netascore_20250908_181654.gpkg")
 
     job_dir.mkdir(parents=True, exist_ok=True)
 
     run_pipeline(
-        od_cluster_a=od_cluster_a,
-        od_cluster_b=od_cluster_b,
+        od_clusters_a=od_clusters_a,
+        od_clusters_b=od_clusters_b,
         od_table=od_table,
         stops=stops,
         job_dir=job_dir,
         target_srid=target_srid,
         # netascore_dir=netascore_dir,
         netascore_file=netascore_file,
+        seed=None,
     )
 
 
