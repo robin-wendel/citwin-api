@@ -4,7 +4,7 @@ import traceback
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.gzip import GZipMiddleware
@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from pipeline.run import run_pipeline
 
 # NETASCORE_DIR = Path("/Users/robinwendel/Developer/mobility-lab/netascore")
-NETASCORE_FILE = Path("./data/netascore.gpkg")
+NETASCORE_FILE = Path("data/netascore_20250908_181654.gpkg")
 BASE_JOBS_DIR = Path("./jobs")
 BASE_JOBS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -45,14 +45,15 @@ def job_worker():
 
         try:
             outputs = run_pipeline(
-                od_cluster_a=Path(job["od_cluster_a"]),
-                od_cluster_b=Path(job["od_cluster_b"]),
-                od_table=Path(job["od_table"]),
-                stops=Path(job["stops"]),
-                job_dir=Path(job["job_dir"]),
-                target_srid=int(job["target_srid"]),
+                od_clusters_a=Path(job.get("od_clusters_a")),
+                od_clusters_b=Path(job.get("od_clusters_b")),
+                od_table=Path(job.get("od_table")),
+                stops=Path(job.get("stops")),
+                job_dir=Path(job.get("job_dir")),
+                target_srid=int(job.get("target_srid")),
                 # netascore_dir=NETASCORE_DIR,
                 netascore_file=NETASCORE_FILE,
+                seed=job.get("seed"),
             )
             with JOBS_LOCK:
                 job["status"] = "done"
@@ -81,38 +82,40 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 @app.post("/jobs")
 async def create_job(
-        od_cluster_a: UploadFile = File(...),
-        od_cluster_b: UploadFile = File(...),
+        od_clusters_a: UploadFile = File(...),
+        od_clusters_b: UploadFile = File(...),
         od_table: UploadFile = File(...),
         stops: UploadFile = File(...),
         target_srid: int = Form(...),
+        seed: Optional[int] = Form(None),
 ):
     job_id = str(uuid.uuid4())
     job_dir = (BASE_JOBS_DIR / job_id)
     job_dir.mkdir(parents=True, exist_ok=True)
 
-    a_path = job_dir / f"a_{od_cluster_a.filename}"
-    a_path.write_bytes(await od_cluster_a.read())
+    od_clusters_a_path = job_dir / f"od_clusters_a{Path(od_clusters_a.filename).suffix}"
+    od_clusters_a_path.write_bytes(await od_clusters_a.read())
 
-    b_path = job_dir / f"b_{od_cluster_b.filename}"
-    b_path.write_bytes(await od_cluster_b.read())
+    od_clusters_b_path = job_dir / f"od_clusters_b{Path(od_clusters_b.filename).suffix}"
+    od_clusters_b_path.write_bytes(await od_clusters_b.read())
 
-    t_path = job_dir / f"t_{od_table.filename}"
-    t_path.write_bytes(await od_table.read())
+    od_table_path = job_dir / f"od_table{Path(od_table.filename).suffix}"
+    od_table_path.write_bytes(await od_table.read())
 
-    s_path = job_dir / f"s_{stops.filename}"
-    s_path.write_bytes(await stops.read())
+    stops_path = job_dir / f"stops{Path(stops.filename).suffix}"
+    stops_path.write_bytes(await stops.read())
 
     job = {
         "id": job_id,
         "status": "queued",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "job_dir": str(job_dir),
-        "od_cluster_a": str(a_path),
-        "od_cluster_b": str(b_path),
-        "od_table": str(t_path),
-        "stops": str(s_path),
+        "od_clusters_a": str(od_clusters_a_path),
+        "od_clusters_b": str(od_clusters_b_path),
+        "od_table": str(od_table_path),
+        "stops": str(stops_path),
         "target_srid": int(target_srid),
+        "seed": seed,
     }
 
     with JOBS_LOCK:
