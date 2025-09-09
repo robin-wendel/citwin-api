@@ -9,6 +9,7 @@ from pipeline.steps.build_graphs import build_graphs
 from pipeline.steps.disaggregate_data import distribute_points_in_raster, disaggregate_table_to_edges
 from pipeline.steps.handle_data import ensure_wgs84, concat_gdfs, compute_bbox_str, get_utm_srid
 from pipeline.steps.netascore import update_settings, run_netascore
+from pipeline.steps.snap_points import build_balltree, snap_with_balltree
 
 SETTINGS_TEMPLATE = Path("../settings_template.yml")
 
@@ -28,26 +29,28 @@ def run_pipeline(
     case_id = case_id or datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
 
     # ==================================================================================================================
+    # import data
+    # ==================================================================================================================
+
+    print("import data")
+    od_clusters_a_gdf = ensure_wgs84(gpd.read_file(od_clusters_a))
+    od_clusters_b_gdf = ensure_wgs84(gpd.read_file(od_clusters_b))
+    od_table_df = pd.read_csv(od_table, delimiter=';')
+    stops_gdf = ensure_wgs84(gpd.read_file(stops))
+
+    # ==================================================================================================================
     # disaggregate data
     # ==================================================================================================================
 
     print("disaggregate data")
-    od_clusters_a_gdf = ensure_wgs84(gpd.read_file(od_clusters_a))
-    od_clusters_b_gdf = ensure_wgs84(gpd.read_file(od_clusters_b))
-    od_table_df = pd.read_csv(od_table, delimiter=';')
-
     print("  distribute points in raster")
     od_points_a_gdf = distribute_points_in_raster(od_clusters_a_gdf, "klynge_id", "Beboere", seed)
     od_points_b_gdf = distribute_points_in_raster(od_clusters_b_gdf, "klynge_id", "Arbejdere", seed)
     print("  disaggregate table to edges")
     od_edges_gdf = disaggregate_table_to_edges(od_points_a_gdf, od_points_b_gdf, od_table_df, "Bopael_klynge_id", "Arbejssted_klynge_id", "Antal", seed)
 
-    od_points_a_gdf.to_file(job_dir / "od_points_a.gpkg", driver="GPKG")
-    od_points_b_gdf.to_file(job_dir / "od_points_b.gpkg", driver="GPKG")
-    od_edges_gdf.to_file(job_dir / "od_edges.gpkg", driver="GPKG")
-
     # ==================================================================================================================
-    # NetAScore
+    # netascore
     # ==================================================================================================================
 
     if netascore_gpkg is None:
@@ -64,30 +67,46 @@ def run_pipeline(
 
         print("  run netascore")
         run_netascore(netascore_dir)
-
         netascore_gpkg = netascore_dir / "data" / f"netascore_{case_id}.gpkg"
+
+    netascore_edges_gdf = ensure_wgs84(gpd.read_file(netascore_gpkg, layer="edge"))
+    netascore_nodes_gdf = ensure_wgs84(gpd.read_file(netascore_gpkg, layer="node"))
 
     # ==================================================================================================================
     # build graphs
     # ==================================================================================================================
 
     print("build graphs")
-    netascore_edges_gdf = ensure_wgs84(gpd.read_file(netascore_gpkg, layer="edge"))
-    netascore_nodes_gdf = ensure_wgs84(gpd.read_file(netascore_gpkg, layer="node"))
-    netascore_edges_gdf.to_file(job_dir / "netascore_edges.gpkg", driver="GPKG")
-
     G_base, G_base_reversed, G_quality, G_quality_reversed = build_graphs(netascore_edges_gdf, netascore_nodes_gdf, cache_dir=Path("../jobs/cache"))
 
     # ==================================================================================================================
-    # stops
+    # snap points
     # ==================================================================================================================
 
-    print("stops")
-    stops_gdf = ensure_wgs84(gpd.read_file(stops))
+    print("snap points")
+    print("  building balltree on graph nodes")
+    balltree, node_ids = build_balltree(G_base)
+
+    print("  snapping points to graph nodes")
+    od_points_a_gdf = snap_with_balltree(od_points_a_gdf, balltree, node_ids)
+    od_points_b_gdf = snap_with_balltree(od_points_b_gdf, balltree, node_ids)
+    stops_gdf = snap_with_balltree(stops_gdf, balltree, node_ids)
+
+    # ==================================================================================================================
+    # export data
+    # ==================================================================================================================
+
+    print("export data")
+    od_points_a_gdf.to_file(job_dir / "od_points_a.gpkg", driver="GPKG")
+    od_points_b_gdf.to_file(job_dir / "od_points_b.gpkg", driver="GPKG")
+    od_edges_gdf.to_file(job_dir / "od_edges.gpkg", driver="GPKG")
     stops_gdf.to_file(job_dir / "stops_updated.gpkg", driver="GPKG")
+    netascore_edges_gdf.to_file(job_dir / "netascore_edges.gpkg", driver="GPKG")
+    netascore_nodes_gdf.to_file(job_dir / "netascore_nodes.gpkg", driver="GPKG")
 
     return {
         "netascore_edges": job_dir / "netascore_edges.gpkg",
+        "netascore_nodes": job_dir / "netascore_nodes.gpkg",
         "stops_updated": job_dir / "stops_updated.gpkg",
     }
 
