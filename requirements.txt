@@ -1,3 +1,5 @@
+numpy
+scikit-learn
 networkx
 shapely
 fastapi
