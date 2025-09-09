@@ -85,12 +85,14 @@ def run_pipeline(
 
     print("snap points")
     print("  building balltree on graph nodes")
-    balltree, node_ids = build_balltree(G_base)
+    balltree_base, node_ids_base = build_balltree(G_base)
+    balltree_quality, node_ids_quality = build_balltree(G_quality)
 
     print("  snapping points to graph nodes")
-    od_points_a_gdf = snap_with_balltree(od_points_a_gdf, balltree, node_ids)
-    od_points_b_gdf = snap_with_balltree(od_points_b_gdf, balltree, node_ids)
-    stops_gdf = snap_with_balltree(stops_gdf, balltree, node_ids)
+    od_points_a_gdf = snap_with_balltree(od_points_a_gdf, balltree_base, node_ids_base)
+    od_points_b_gdf = snap_with_balltree(od_points_b_gdf, balltree_base, node_ids_base)
+    stops_gdf = snap_with_balltree(stops_gdf, balltree_base, node_ids_base, node_id_field="node_id_base")
+    stops_gdf = snap_with_balltree(stops_gdf, balltree_quality, node_ids_quality, node_id_field="node_id_quality")
 
     # ==================================================================================================================
     # export data
