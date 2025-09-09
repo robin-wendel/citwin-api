@@ -8,8 +8,6 @@ curl -X POST http://localhost:8000/jobs \
   -F "od_clusters_b=@/Users/robinwendel/Developer/mobility-lab/netascore-api/data/a_klynger.gpkg" \
   -F "od_table=@/Users/robinwendel/Developer/mobility-lab/netascore-api/data/Data_2023_0099_Tabel_1.csv" \
   -F "stops=@/Users/robinwendel/Developer/mobility-lab/netascore-api/data/dynlayer.gpkg" \
-  -F "target_srid=32632" \
-  # -F "seed=42"
 ```
 
 ```bash

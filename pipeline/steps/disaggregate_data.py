@@ -21,10 +21,10 @@ def random_points_in_polygon(geom: Polygon, count: int, seed: Optional[int] = No
 
 
 def distribute_points_in_raster(
-    polygon_gdf: GeoDataFrame,
-    id_field: str,
-    count_field: str,
-    seed: Optional[int] = None,
+        polygon_gdf: GeoDataFrame,
+        id_field: str,
+        count_field: str,
+        seed: Optional[int] = None,
 ) -> gpd.GeoDataFrame:
     # clean geometries
     polygon_gdf = polygon_gdf[polygon_gdf.geometry.notna() & ~polygon_gdf.geometry.is_empty]
@@ -88,13 +88,13 @@ def distribute_points_in_raster(
 
 
 def disaggregate_table_to_edges(
-    od_points_a_gdf: gpd.GeoDataFrame,
-    od_points_b_gdf: gpd.GeoDataFrame,
-    od_table_df: pd.DataFrame,
-    od_table_a_id_field: str,
-    od_table_b_id_field: str,
-    od_table_trips_field: str,
-    seed: Optional[int] = None,
+        od_points_a_gdf: gpd.GeoDataFrame,
+        od_points_b_gdf: gpd.GeoDataFrame,
+        od_table_df: pd.DataFrame,
+        od_table_a_id_field: str,
+        od_table_b_id_field: str,
+        od_table_trips_field: str,
+        seed: Optional[int] = None,
 ) -> gpd.GeoDataFrame:
     rng = random.Random(seed) if seed is not None else random
 

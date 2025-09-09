@@ -1,5 +1,3 @@
-from typing import Tuple
-
 import geopandas as gpd
 import pandas as pd
 
@@ -10,18 +8,18 @@ def ensure_wgs84(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     return gdf
 
 
-def concat_geodataframes(*gdfs: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+def concat_gdfs(*gdfs: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     df = pd.concat(gdfs, ignore_index=True)
     return gpd.GeoDataFrame(df)
 
 
-def compute_bbox(gdf: gpd.GeoDataFrame) -> Tuple[str, int]:
+def compute_bbox_str(gdf: gpd.GeoDataFrame) -> str:
     minx, miny, maxx, maxy = gdf.total_bounds
-    bbox = f"{miny:.4f},{minx:.4f},{maxy:.4f},{maxx:.4f}"
-    return bbox, get_utm_srid_from_bbox(minx, miny, maxx, maxy)
+    return f"{miny:.4f},{minx:.4f},{maxy:.4f},{maxx:.4f}"
 
 
-def get_utm_srid_from_bbox(minx: float, miny: float, maxx: float, maxy: float) -> int:
+def get_utm_srid(gdf: gpd.GeoDataFrame) -> int:
+    minx, miny, maxx, maxy = gdf.total_bounds
     center_lon = (minx + maxx) / 2
     center_lat = (miny + maxy) / 2
     zone = int((center_lon + 180) / 6) + 1
