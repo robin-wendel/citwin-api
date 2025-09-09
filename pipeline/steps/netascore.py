@@ -10,7 +10,7 @@ def update_settings(
         case_id: str,
         target_srid: int,
         bbox_str: str
-):
+) -> None:
     with open(settings_template_input_path, "r", encoding="utf-8") as f:
         settings = yaml.safe_load(f) or {}
 
@@ -23,6 +23,6 @@ def update_settings(
         yaml.safe_dump(settings, f, sort_keys=False, allow_unicode=True)
 
 
-def run_netascore(netascore_dir: Path):
+def run_netascore(netascore_dir: Path) -> None:
     cmd = ["docker", "compose", "run", "--rm", "netascore", "data/settings.yml"]
     subprocess.run(cmd, cwd=netascore_dir, check=True)

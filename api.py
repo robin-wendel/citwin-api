@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from pipeline.run import run_pipeline
 
 # NETASCORE_DIR = Path("/Users/robinwendel/Developer/mobility-lab/netascore")
-NETASCORE_FILE = Path("data/netascore_20250908_181654.gpkg")
+NETASCORE_GPKG = Path("data/netascore_20250908_181654.gpkg")
 BASE_JOBS_DIR = Path("./jobs")
 BASE_JOBS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -50,9 +50,8 @@ def job_worker():
                 od_table=Path(job.get("od_table")),
                 stops=Path(job.get("stops")),
                 job_dir=Path(job.get("job_dir")),
-                target_srid=int(job.get("target_srid")),
                 # netascore_dir=NETASCORE_DIR,
-                netascore_file=NETASCORE_FILE,
+                netascore_gpkg=NETASCORE_GPKG,
                 seed=job.get("seed"),
             )
             with JOBS_LOCK:
@@ -86,7 +85,6 @@ async def create_job(
         od_clusters_b: UploadFile = File(...),
         od_table: UploadFile = File(...),
         stops: UploadFile = File(...),
-        target_srid: int = Form(...),
         seed: Optional[int] = Form(None),
 ):
     job_id = str(uuid.uuid4())
@@ -114,7 +112,6 @@ async def create_job(
         "od_clusters_b": str(od_clusters_b_path),
         "od_table": str(od_table_path),
         "stops": str(stops_path),
-        "target_srid": int(target_srid),
         "seed": seed,
     }
 
