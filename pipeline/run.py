@@ -11,7 +11,7 @@ from pipeline.steps.handle_data import ensure_wgs84, concat_gdfs, compute_bbox_s
 from pipeline.steps.netascore import update_settings, run_netascore
 from pipeline.steps.snap_points import build_balltree, snap_with_balltree
 
-SETTINGS_TEMPLATE = Path("../settings_template.yml")
+SETTINGS_TEMPLATE = Path(Path(__file__).parent.parent / "settings_template.yml")
 
 
 def run_pipeline(
@@ -62,7 +62,7 @@ def run_pipeline(
         print("    target_srid:", target_srid)
         print("    bbox_str:", bbox_str)
         settings_template_path = settings_template or SETTINGS_TEMPLATE
-        settings_path = netascore_dir / "data/settings.yml"
+        settings_path = netascore_dir / "data" / "settings.yml"
         update_settings(settings_template_path, settings_path, case_id, target_srid, bbox_str)
 
         print("  run netascore")
@@ -121,7 +121,8 @@ def main():
     stops = Path("../data/dynlayer.gpkg")
     job_dir = Path("../jobs/manual")
     # netascore_dir = Path("/Users/robinwendel/Developer/mobility-lab/netascore")
-    netascore_gpkg = Path("../data/netascore_20250908_181654.gpkg")
+    netascore_dir = Path("../netascore")
+    # netascore_gpkg = Path("../data/netascore_20250908_181654.gpkg")
 
     job_dir.mkdir(parents=True, exist_ok=True)
 
@@ -131,8 +132,8 @@ def main():
         od_table=od_table,
         stops=stops,
         job_dir=job_dir,
-        # netascore_dir=netascore_dir,
-        netascore_gpkg=netascore_gpkg,
+        netascore_dir=netascore_dir,
+        # netascore_gpkg=netascore_gpkg,
         seed=None,
     )
 

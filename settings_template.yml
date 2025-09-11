@@ -25,11 +25,11 @@ index:
 profiles:
   -
     profile_name: bike
-    filename: profile_bike_old.yml
+    filename: profile_bike.yml
     filter_access_bike: True
   -
     profile_name: walk
-    filename: profile_walk_old.yml
+    filename: profile_walk.yml
     filter_access_walk: True
 
 export:

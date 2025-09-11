@@ -1,0 +1,10 @@
+.venv/
+data/*
+!data/netascore_20250908_181654.gpkg
+jobs/
+!jobs/cache/
+netascore/
+.DS_Store
+.git/
+.idea/
+__pycache__/
