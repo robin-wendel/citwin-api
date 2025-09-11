@@ -77,7 +77,8 @@ def run_pipeline(
     # ==================================================================================================================
 
     print("build graphs")
-    G_base, G_base_reversed, G_quality, G_quality_reversed = build_graphs(netascore_edges_gdf, netascore_nodes_gdf, cache_dir=Path("../jobs/cache"))
+    cache_dir = Path(__file__).parent.parent / "jobs" / "cache"
+    G_base, G_base_reversed, G_quality, G_quality_reversed = build_graphs(netascore_edges_gdf, netascore_nodes_gdf, cache_dir)
 
     # ==================================================================================================================
     # snap points

@@ -1,8 +1,10 @@
-numpy
-scikit-learn
-networkx
-shapely
 fastapi
 geopandas
+networkx
+numpy
 pandas
+python-multipart
 pyyaml
+scikit-learn
+shapely
+uvicorn
