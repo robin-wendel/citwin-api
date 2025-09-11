@@ -1,5 +1,5 @@
 ```bash
-uvicorn api:app --host 0.0.0.0 --port 8000 --workers 1 -reload
+uvicorn api:app --host 0.0.0.0 --port 8000 --workers 1 --reload
 ```
 
 ```bash
@@ -7,7 +7,8 @@ curl -X POST http://localhost:8000/jobs \
   -F "od_clusters_a=@/Users/robinwendel/Developer/mobility-lab/citwin-api/data/b_klynger.gpkg" \
   -F "od_clusters_b=@/Users/robinwendel/Developer/mobility-lab/citwin-api/data/a_klynger.gpkg" \
   -F "od_table=@/Users/robinwendel/Developer/mobility-lab/citwin-api/data/Data_2023_0099_Tabel_1.csv" \
-  -F "stops=@/Users/robinwendel/Developer/mobility-lab/citwin-api/data/dynlayer.gpkg"
+  -F "stops=@/Users/robinwendel/Developer/mobility-lab/citwin-api/data/dynlayer.gpkg" \
+  -F "netascore_gpkg=@/Users/robinwendel/Developer/mobility-lab/citwin-api/data/netascore_20250908_181654.gpkg"
 ```
 
 ```bash
