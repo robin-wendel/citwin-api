@@ -12,8 +12,8 @@ from fastapi.responses import FileResponse, JSONResponse
 
 from pipeline.run import run_pipeline
 
-# NETASCORE_DIR = Path("/Users/robinwendel/Developer/mobility-lab/netascore")
-NETASCORE_GPKG = Path("data/netascore_20250908_181654.gpkg")
+NETASCORE_DIR = Path("/netascore")
+# NETASCORE_GPKG = Path("data/netascore_20250908_181654.gpkg")
 BASE_JOBS_DIR = Path("./jobs")
 BASE_JOBS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -50,8 +50,8 @@ def job_worker():
                 od_table=Path(job.get("od_table")),
                 stops=Path(job.get("stops")),
                 job_dir=Path(job.get("job_dir")),
-                # netascore_dir=NETASCORE_DIR,
-                netascore_gpkg=NETASCORE_GPKG,
+                netascore_dir=NETASCORE_DIR,
+                # netascore_gpkg=NETASCORE_GPKG,
                 seed=job.get("seed"),
             )
             with JOBS_LOCK:
