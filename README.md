@@ -11,17 +11,15 @@ curl -X POST http://localhost:8000/jobs \
 ```
 
 ```bash
-# curl http://localhost:8000/jobs/<job_id>
-curl -s http://localhost:8000/jobs/e005aa49-88ac-46b7-bc07-109129e5d3e4 | jq
+curl -s http://localhost:8000/jobs/296c1ca6-5480-49aa-aed3-20c77b26665c | jq
 ```
 
 ```bash
-# curl -s http://localhost:8000/jobs/<job_id>/downloads
-curl -s http://localhost:8000/jobs/ab88d1c9-c280-4a27-904f-de0707aa6680/downloads | jq
+curl -s http://localhost:8000/jobs/296c1ca6-5480-49aa-aed3-20c77b26665c/downloads | jq
 ```
 
 ```bash
-# curl -OJ http://localhost:8000/jobs/<job_id>/downloads/<key>
-curl -OJ http://localhost:8000/jobs/ab88d1c9-c280-4a27-904f-de0707aa6680/download/netascore
-curl -OJ http://localhost:8000/jobs/ab88d1c9-c280-4a27-904f-de0707aa6680/download/stops
+curl -OJ http://localhost:8000/jobs/296c1ca6-5480-49aa-aed3-20c77b26665c/download/netascore_edges
+curl -OJ http://localhost:8000/jobs/296c1ca6-5480-49aa-aed3-20c77b26665c/download/netascore_nodes
+curl -OJ http://localhost:8000/jobs/296c1ca6-5480-49aa-aed3-20c77b26665c/download/stops_updated
 ```
