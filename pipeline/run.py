@@ -120,9 +120,8 @@ def main():
     od_table = Path("../data/Data_2023_0099_Tabel_1.csv")
     stops = Path("../data/dynlayer.gpkg")
     job_dir = Path("../jobs/manual")
-    # netascore_dir = Path("/Users/robinwendel/Developer/mobility-lab/netascore")
     netascore_dir = Path("../netascore")
-    # netascore_gpkg = Path("../data/netascore_20250908_181654.gpkg")
+    netascore_gpkg = Path("../data/netascore_20250908_181654.gpkg")
 
     job_dir.mkdir(parents=True, exist_ok=True)
 
@@ -133,7 +132,7 @@ def main():
         stops=stops,
         job_dir=job_dir,
         netascore_dir=netascore_dir,
-        # netascore_gpkg=netascore_gpkg,
+        netascore_gpkg=netascore_gpkg,
         seed=None,
     )
 

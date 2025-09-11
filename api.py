@@ -12,8 +12,7 @@ from fastapi.responses import FileResponse, JSONResponse
 
 from pipeline.run import run_pipeline
 
-NETASCORE_DIR = Path("/netascore")
-# NETASCORE_GPKG = Path("data/netascore_20250908_181654.gpkg")
+NETASCORE_DIR = Path("./netascore")
 BASE_JOBS_DIR = Path("./jobs")
 BASE_JOBS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -51,7 +50,7 @@ def job_worker():
                 stops=Path(job.get("stops")),
                 job_dir=Path(job.get("job_dir")),
                 netascore_dir=NETASCORE_DIR,
-                # netascore_gpkg=NETASCORE_GPKG,
+                netascore_gpkg=Path(job.get("netascore_gpkg")),
                 seed=job.get("seed"),
             )
             with JOBS_LOCK:
@@ -85,6 +84,7 @@ async def create_job(
         od_clusters_b: UploadFile = File(...),
         od_table: UploadFile = File(...),
         stops: UploadFile = File(...),
+        netascore_gpkg: Optional[UploadFile] = File(None),
         seed: Optional[int] = Form(None),
 ):
     job_id = str(uuid.uuid4())
@@ -103,6 +103,9 @@ async def create_job(
     stops_path = job_dir / f"stops{Path(stops.filename).suffix}"
     stops_path.write_bytes(await stops.read())
 
+    netascore_gpkg_path = job_dir / f"netascore{Path(netascore_gpkg.filename).suffix}"
+    netascore_gpkg_path.write_bytes(await netascore_gpkg.read())
+
     job = {
         "id": job_id,
         "status": "queued",
@@ -112,6 +115,7 @@ async def create_job(
         "od_clusters_b": str(od_clusters_b_path),
         "od_table": str(od_table_path),
         "stops": str(stops_path),
+        "netascore_gpkg": str(netascore_gpkg_path),
         "seed": seed,
     }
 
