@@ -34,6 +34,7 @@ def run_pipeline(
         od_table_trips_field: str,
 
         netascore_gpkg: Optional[Path] = None,
+        output_format: Optional[str] = "GPKG",
         seed: Optional[int] = None,
 
         job_dir: Optional[Path] = None,
@@ -42,6 +43,9 @@ def run_pipeline(
         job_id = str(uuid.uuid4())
         job_dir = (BASE_JOBS_DIR / job_id)
     job_dir.mkdir(parents=True, exist_ok=True)
+
+    if output_format not in {"GPKG", "GeoJSON"}:
+        raise ValueError(f"Unsupported output format: {output_format}. Choose 'GPKG' or 'GeoJSON'.")
 
     # ==================================================================================================================
     # import data
@@ -120,16 +124,20 @@ def run_pipeline(
     # export data
     # ==================================================================================================================
 
-    print("export data")
-    od_points_a = job_dir / "od_points_a.gpkg"
-    od_points_b = job_dir / "od_points_b.gpkg"
-    od_edges = job_dir / "od_edges.gpkg"
-    stops_updated = job_dir / "stops_updated.gpkg"
+    file_extension = "gpkg" if output_format == "GPKG" else "geojson"
+    driver = "GPKG" if output_format == "GPKG" else "GeoJSON"
 
-    od_points_a_gdf.to_file(od_points_a, driver="GPKG")
-    od_points_b_gdf.to_file(od_points_b, driver="GPKG")
-    od_edges_gdf.to_file(od_edges, driver="GPKG")
-    stops_gdf.to_file(stops_updated, driver="GPKG")
+    print("export data")
+    od_points_a = job_dir / f"od_points_a.{file_extension}"
+    od_points_b = job_dir / f"od_points_b.{file_extension}"
+    od_edges = job_dir / f"od_edges.{file_extension}"
+    stops_updated = job_dir / f"stops_updated.{file_extension}"
+
+
+    od_points_a_gdf.to_file(od_points_a, driver=driver)
+    od_points_b_gdf.to_file(od_points_b, driver=driver)
+    od_edges_gdf.to_file(od_edges, driver=driver)
+    stops_gdf.to_file(stops_updated, driver=driver)
 
     outputs = {
         "od_points_a": od_points_a,
