@@ -1,4 +1,5 @@
-from datetime import datetime, timezone
+import shutil
+import uuid
 from pathlib import Path
 from typing import Optional, Dict
 
@@ -11,7 +12,11 @@ from pipeline.steps.handle_data import ensure_wgs84, concat_gdfs, compute_bbox_s
 from pipeline.steps.netascore import update_settings, run_netascore
 from pipeline.steps.snap_points import build_balltree, snap_with_balltree
 
-SETTINGS_TEMPLATE = Path(Path(__file__).parent.parent / "settings_template.yml")
+BASE_JOBS_DIR = Path(__file__).parent.parent / "jobs"
+BASE_JOBS_DIR.mkdir(parents=True, exist_ok=True)
+
+NETASCORE_DIR = Path(__file__).parent.parent / "netascore"
+NETASCORE_SETTINGS_TEMPLATE = Path(__file__).parent.parent / "netascore" / "settings_template.yml"
 
 
 def run_pipeline(
@@ -19,14 +24,24 @@ def run_pipeline(
         od_clusters_b: Path,
         od_table: Path,
         stops: Path,
-        job_dir: Path,
-        case_id: Optional[str] = None,
-        netascore_dir: Optional[Path] = None,
-        settings_template: Optional[Path] = None,
+
+        od_clusters_a_id_field: str,
+        od_clusters_a_count_field: str,
+        od_clusters_b_id_field: str,
+        od_clusters_b_count_field: str,
+        od_table_a_id_field: str,
+        od_table_b_id_field: str,
+        od_table_trips_field: str,
+
         netascore_gpkg: Optional[Path] = None,
         seed: Optional[int] = None,
+
+        job_dir: Optional[Path] = None,
 ) -> Dict[str, Path]:
-    case_id = case_id or datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    if job_dir is None:
+        job_id = str(uuid.uuid4())
+        job_dir = (BASE_JOBS_DIR / job_id)
+    job_dir.mkdir(parents=True, exist_ok=True)
 
     # ==================================================================================================================
     # import data
@@ -43,15 +58,18 @@ def run_pipeline(
     # ==================================================================================================================
 
     print("disaggregate data")
-    print("  distribute points in raster")
-    od_points_a_gdf = distribute_points_in_raster(od_clusters_a_gdf, "klynge_id", "Beboere", seed)
-    od_points_b_gdf = distribute_points_in_raster(od_clusters_b_gdf, "klynge_id", "Arbejdere", seed)
+    print("  distribute points in clusters a")
+    od_points_a_gdf = distribute_points_in_raster(od_clusters_a_gdf, od_clusters_a_id_field, od_clusters_a_count_field, seed)
+    print("  distribute points in clusters b")
+    od_points_b_gdf = distribute_points_in_raster(od_clusters_b_gdf, od_clusters_b_id_field, od_clusters_b_count_field, seed)
     print("  disaggregate table to edges")
-    od_edges_gdf = disaggregate_table_to_edges(od_points_a_gdf, od_points_b_gdf, od_table_df, "Bopael_klynge_id", "Arbejssted_klynge_id", "Antal", seed)
+    od_edges_gdf = disaggregate_table_to_edges(od_points_a_gdf, od_points_b_gdf, od_table_df, od_table_a_id_field, od_table_b_id_field, od_table_trips_field, seed)
 
     # ==================================================================================================================
     # netascore
     # ==================================================================================================================
+
+    generated_netascore = False
 
     if netascore_gpkg is None:
         print("netascore")
@@ -61,13 +79,16 @@ def run_pipeline(
         bbox_str = compute_bbox_str(od_clusters_gdf)
         print("    target_srid:", target_srid)
         print("    bbox_str:", bbox_str)
-        settings_template_path = settings_template or SETTINGS_TEMPLATE
-        settings_path = netascore_dir / "data" / "settings.yml"
-        update_settings(settings_template_path, settings_path, case_id, target_srid, bbox_str)
+        netascore_settings = NETASCORE_DIR / "data" / "settings.yml"
+        update_settings(NETASCORE_SETTINGS_TEMPLATE, netascore_settings, target_srid, bbox_str)
 
         print("  run netascore")
-        run_netascore(netascore_dir)
-        netascore_gpkg = netascore_dir / "data" / f"netascore_{case_id}.gpkg"
+        run_netascore(NETASCORE_DIR)
+        netascore_gpkg_tmp = NETASCORE_DIR / "data" / f"netascore_default_case.gpkg"
+        netascore_gpkg = job_dir / "netascore.gpkg"
+        shutil.copy(netascore_gpkg_tmp, netascore_gpkg)
+
+        generated_netascore = True
 
     netascore_edges_gdf = ensure_wgs84(gpd.read_file(netascore_gpkg, layer="edge"))
     netascore_nodes_gdf = ensure_wgs84(gpd.read_file(netascore_gpkg, layer="node"))
@@ -100,39 +121,43 @@ def run_pipeline(
     # ==================================================================================================================
 
     print("export data")
-    od_points_a_gdf.to_file(job_dir / "od_points_a.gpkg", driver="GPKG")
-    od_points_b_gdf.to_file(job_dir / "od_points_b.gpkg", driver="GPKG")
-    od_edges_gdf.to_file(job_dir / "od_edges.gpkg", driver="GPKG")
-    stops_gdf.to_file(job_dir / "stops_updated.gpkg", driver="GPKG")
-    netascore_edges_gdf.to_file(job_dir / "netascore_edges.gpkg", driver="GPKG")
-    netascore_nodes_gdf.to_file(job_dir / "netascore_nodes.gpkg", driver="GPKG")
+    od_points_a = job_dir / "od_points_a.gpkg"
+    od_points_b = job_dir / "od_points_b.gpkg"
+    od_edges = job_dir / "od_edges.gpkg"
+    stops_updated = job_dir / "stops_updated.gpkg"
 
-    return {
-        "netascore_edges": job_dir / "netascore_edges.gpkg",
-        "netascore_nodes": job_dir / "netascore_nodes.gpkg",
-        "stops_updated": job_dir / "stops_updated.gpkg",
+    od_points_a_gdf.to_file(od_points_a, driver="GPKG")
+    od_points_b_gdf.to_file(od_points_b, driver="GPKG")
+    od_edges_gdf.to_file(od_edges, driver="GPKG")
+    stops_gdf.to_file(stops_updated, driver="GPKG")
+
+    outputs = {
+        "od_points_a": od_points_a,
+        "od_points_b": od_points_b,
+        "od_edges": od_edges,
+        "stops_updated": stops_updated,
     }
+
+    if generated_netascore:
+        outputs["netascore_gpkg"] = netascore_gpkg
+
+    return outputs
 
 
 def main():
-    od_clusters_a = Path("../data/b_klynger.gpkg")
-    od_clusters_b = Path("../data/a_klynger.gpkg")
-    od_table = Path("../data/Data_2023_0099_Tabel_1.csv")
-    stops = Path("../data/dynlayer.gpkg")
-    job_dir = Path("../jobs/manual")
-    netascore_dir = Path("../netascore")
-    netascore_gpkg = Path("../data/netascore_20250908_181654.gpkg")
-
-    job_dir.mkdir(parents=True, exist_ok=True)
-
     run_pipeline(
-        od_clusters_a=od_clusters_a,
-        od_clusters_b=od_clusters_b,
-        od_table=od_table,
-        stops=stops,
-        job_dir=job_dir,
-        netascore_dir=netascore_dir,
-        netascore_gpkg=netascore_gpkg,
+        od_clusters_a=Path("../data/b_klynger.gpkg"),
+        od_clusters_b=Path("../data/a_klynger.gpkg"),
+        od_table=Path("../data/Data_2023_0099_Tabel_1.csv"),
+        stops=Path("../data/dynlayer.gpkg"),
+        od_clusters_a_id_field="klynge_id",
+        od_clusters_a_count_field="Beboere",
+        od_clusters_b_id_field="klynge_id",
+        od_clusters_b_count_field="Arbejdere",
+        od_table_a_id_field="Bopael_klynge_id",
+        od_table_b_id_field="Arbejssted_klynge_id",
+        od_table_trips_field="Antal",
+        netascore_gpkg=Path("../data/netascore_20250908_181654.gpkg"),
         seed=None,
     )
 

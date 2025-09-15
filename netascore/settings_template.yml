@@ -1,9 +1,7 @@
 version: 1.2
-
 global:
   case_id: default_case
   target_srid: 0
-
 database:
   host: netascore-db
   port: 5432
@@ -11,27 +9,21 @@ database:
   username: postgres
   password: postgres
   on_existing: delete
-
 import:
   type: osm
   on_existing: delete
   bbox: 0.0,0.0,0.0,0.0
-  interactive: False
+  interactive: false
   buffer: 0
-
 index:
-  compute_explanation: False
-
+  compute_explanation: false
 profiles:
-  -
-    profile_name: bike
-    filename: profile_bike.yml
-    filter_access_bike: True
-  -
-    profile_name: walk
-    filename: profile_walk.yml
-    filter_access_walk: True
-
+- profile_name: bike
+  filename: profile_bike.yml
+  filter_access_bike: true
+- profile_name: walk
+  filename: profile_walk.yml
+  filter_access_walk: true
 export:
   type: geopackage
   filename: netascore_<case_id>.gpkg
