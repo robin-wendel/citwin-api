@@ -12,8 +12,7 @@ from fastapi.responses import FileResponse, JSONResponse
 
 from pipeline.run import run_pipeline
 
-NETASCORE_DIR = Path("./netascore")
-BASE_JOBS_DIR = Path("./jobs")
+BASE_JOBS_DIR = Path(__file__).parent / "jobs"
 BASE_JOBS_DIR.mkdir(parents=True, exist_ok=True)
 
 # ======================================================================================================================
@@ -24,11 +23,10 @@ Job = Dict[str, Any]
 JOBS: Dict[str, Job] = {}
 JOB_QUEUE: "queue.Queue[str]" = queue.Queue()
 JOBS_LOCK = threading.Lock()
-STOP_EVENT = threading.Event()
 
 
 def job_worker():
-    while not STOP_EVENT.is_set():
+    while True:
         try:
             job_id = JOB_QUEUE.get(timeout=0.5)
         except queue.Empty:
@@ -48,10 +46,19 @@ def job_worker():
                 od_clusters_b=Path(job.get("od_clusters_b")),
                 od_table=Path(job.get("od_table")),
                 stops=Path(job.get("stops")),
-                job_dir=Path(job.get("job_dir")),
-                netascore_dir=NETASCORE_DIR,
-                netascore_gpkg=Path(job.get("netascore_gpkg")),
+
+                od_clusters_a_id_field=job.get("od_clusters_a_id_field"),
+                od_clusters_a_count_field=job.get("od_clusters_a_count_field"),
+                od_clusters_b_id_field=job.get("od_clusters_b_id_field"),
+                od_clusters_b_count_field=job.get("od_clusters_b_count_field"),
+                od_table_a_id_field=job.get("od_table_a_id_field"),
+                od_table_b_id_field=job.get("od_table_b_id_field"),
+                od_table_trips_field=job.get("od_table_trips_field"),
+
+                netascore_gpkg=Path(job.get("netascore_gpkg")) if job.get("netascore_gpkg") else None,
                 seed=job.get("seed"),
+
+                job_dir=Path(job.get("job_dir")),
             )
             with JOBS_LOCK:
                 job["status"] = "done"
@@ -84,6 +91,15 @@ async def create_job(
         od_clusters_b: UploadFile = File(...),
         od_table: UploadFile = File(...),
         stops: UploadFile = File(...),
+
+        od_clusters_a_id_field: str = Form(...),
+        od_clusters_a_count_field: str = Form(...),
+        od_clusters_b_id_field: str = Form(...),
+        od_clusters_b_count_field: str = Form(...),
+        od_table_a_id_field: str = Form(...),
+        od_table_b_id_field: str = Form(...),
+        od_table_trips_field: str = Form(...),
+
         netascore_gpkg: Optional[UploadFile] = File(None),
         seed: Optional[int] = Form(None),
 ):
@@ -103,19 +119,31 @@ async def create_job(
     stops_path = job_dir / f"stops{Path(stops.filename).suffix}"
     stops_path.write_bytes(await stops.read())
 
-    netascore_gpkg_path = job_dir / f"netascore{Path(netascore_gpkg.filename).suffix}"
-    netascore_gpkg_path.write_bytes(await netascore_gpkg.read())
+    netascore_gpkg_path = None
+    if netascore_gpkg:
+        netascore_gpkg_path = job_dir / f"netascore{Path(netascore_gpkg.filename).suffix}"
+        netascore_gpkg_path.write_bytes(await netascore_gpkg.read())
 
     job = {
         "id": job_id,
         "status": "queued",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "job_dir": str(job_dir),
+
         "od_clusters_a": str(od_clusters_a_path),
         "od_clusters_b": str(od_clusters_b_path),
         "od_table": str(od_table_path),
         "stops": str(stops_path),
-        "netascore_gpkg": str(netascore_gpkg_path),
+
+        "od_clusters_a_id_field": od_clusters_a_id_field,
+        "od_clusters_a_count_field": od_clusters_a_count_field,
+        "od_clusters_b_id_field": od_clusters_b_id_field,
+        "od_clusters_b_count_field": od_clusters_b_count_field,
+        "od_table_a_id_field": od_table_a_id_field,
+        "od_table_b_id_field": od_table_b_id_field,
+        "od_table_trips_field": od_table_trips_field,
+
+        "netascore_gpkg": str(netascore_gpkg_path) if netascore_gpkg_path else None,
         "seed": seed,
     }
 

@@ -3,7 +3,9 @@ import pandas as pd
 
 
 def ensure_wgs84(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
-    if gdf.crs is None or gdf.crs.to_epsg() != 4326:
+    if gdf.crs is None:
+        return gdf.set_crs(4326)
+    if gdf.crs.to_epsg() != 4326:
         return gdf.to_crs(4326)
     return gdf
 
