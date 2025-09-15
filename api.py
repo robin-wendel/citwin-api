@@ -56,6 +56,7 @@ def job_worker():
                 od_table_trips_field=job.get("od_table_trips_field"),
 
                 netascore_gpkg=Path(job.get("netascore_gpkg")) if job.get("netascore_gpkg") else None,
+                output_format=job.get("output_format"),
                 seed=job.get("seed"),
 
                 job_dir=Path(job.get("job_dir")),
@@ -101,6 +102,7 @@ async def create_job(
         od_table_trips_field: str = Form(...),
 
         netascore_gpkg: Optional[UploadFile] = File(None),
+        output_format: Optional[str] = Form("GPKG"),
         seed: Optional[int] = Form(None),
 ):
     job_id = str(uuid.uuid4())
@@ -144,6 +146,7 @@ async def create_job(
         "od_table_trips_field": od_table_trips_field,
 
         "netascore_gpkg": str(netascore_gpkg_path) if netascore_gpkg_path else None,
+        "output_format": output_format,
         "seed": seed,
     }
 
