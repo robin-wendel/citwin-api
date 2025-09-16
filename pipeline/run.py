@@ -8,6 +8,7 @@ import pandas as pd
 
 from pipeline.steps.build_graphs import build_graphs
 from pipeline.steps.disaggregate_data import distribute_points_in_raster, disaggregate_table_to_edges
+from pipeline.steps.evaluate_stops import evaluate_stops
 from pipeline.steps.handle_data import ensure_wgs84, concat_gdfs, compute_bbox_str, get_utm_srid
 from pipeline.steps.netascore import update_settings, run_netascore
 from pipeline.steps.snap_points import build_balltree, snap_with_balltree
@@ -121,6 +122,13 @@ def run_pipeline(
     stops_gdf = snap_with_balltree(stops_gdf, balltree_quality, node_ids_quality, node_id_field="node_id_quality")
 
     # ==================================================================================================================
+    # evaluate stops
+    # ==================================================================================================================
+
+    print("evaluate stops")
+    edges_base_gdf, edges_quality_gdf, routes_base_gdf, routes_quality_gdf, stops_gdf, households_gdf = evaluate_stops(netascore_edges_gdf, stops_gdf, od_points_a_gdf, G_base, G_quality, G_base_reversed, G_quality_reversed)
+
+    # ==================================================================================================================
     # export data
     # ==================================================================================================================
 
@@ -131,19 +139,33 @@ def run_pipeline(
     od_points_a = job_dir / f"od_points_a.{file_extension}"
     od_points_b = job_dir / f"od_points_b.{file_extension}"
     od_edges = job_dir / f"od_edges.{file_extension}"
+    edges_base = job_dir / f"edges_base.{file_extension}"
+    edges_quality = job_dir / f"edges_quality.{file_extension}"
+    routes_base = job_dir / f"routes_base.{file_extension}"
+    routes_quality = job_dir / f"routes_quality.{file_extension}"
     stops_updated = job_dir / f"stops_updated.{file_extension}"
-
+    households = job_dir / f"households.{file_extension}"
 
     od_points_a_gdf.to_file(od_points_a, driver=driver)
     od_points_b_gdf.to_file(od_points_b, driver=driver)
     od_edges_gdf.to_file(od_edges, driver=driver)
+    edges_base_gdf.to_file(edges_base, driver=driver)
+    edges_quality_gdf.to_file(edges_quality, driver=driver)
+    routes_base_gdf.to_file(routes_base, driver=driver)
+    routes_quality_gdf.to_file(routes_quality, driver=driver)
     stops_gdf.to_file(stops_updated, driver=driver)
+    households_gdf.to_file(households, driver=driver)
 
     outputs = {
         "od_points_a": od_points_a,
         "od_points_b": od_points_b,
         "od_edges": od_edges,
+        "edges_base": edges_base,
+        "edges_quality": edges_quality,
+        "routes_base": routes_base,
+        "routes_quality": routes_quality,
         "stops_updated": stops_updated,
+        "households": households,
     }
 
     if generated_netascore:
