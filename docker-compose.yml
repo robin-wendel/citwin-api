@@ -3,10 +3,10 @@ services:
     build:
       context: .
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock # Enables access to Docker on the host
-      - ./netascore:/netascore                    # Grants access to the netascore folder
-    working_dir: /app                             # Sets the working directory inside the container
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./netascore:/netascore
+    working_dir: /app
     environment:
-      - DOCKER_HOST=unix:///var/run/docker.sock   # Configures the Docker host for API
+      - DOCKER_HOST=unix:///var/run/docker.sock
     ports:
-      - "8000:8000"                               # Exposes the API on port 8000
+      - "8000:8000"
