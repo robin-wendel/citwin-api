@@ -1,0 +1,17 @@
+name: citwin-api
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.13
+  - fastapi
+  - geopandas
+  - networkx
+  - numpy
+  - pandas
+  - python-multipart
+  - pyyaml
+  - scikit-learn
+  - shapely
+  - tqdm
+  - uvicorn

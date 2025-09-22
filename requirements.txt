@@ -7,4 +7,5 @@ python-multipart
 pyyaml
 scikit-learn
 shapely
+tqdm
 uvicorn
