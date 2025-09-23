@@ -18,11 +18,11 @@ from pipeline.steps.snap_points import build_balltree, snap_with_balltree
 env_path = Path(__file__).parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
-BASE_JOBS_DIR = Path(__file__).parent.parent / "jobs"
-BASE_JOBS_DIR.mkdir(parents=True, exist_ok=True)
-
 NETASCORE_DIR = Path(os.getenv("NETASCORE_DIR"))
 NETASCORE_SETTINGS_TEMPLATE = Path(__file__).parent.parent / "netascore" / "settings_template.yml"
+
+BASE_JOBS_DIR = Path(__file__).parent.parent / "jobs"
+BASE_JOBS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def run_pipeline(
@@ -192,7 +192,7 @@ def main():
         od_table_a_id_field="Bopael_klynge_id",
         od_table_b_id_field="Arbejssted_klynge_id",
         od_table_trips_field="Antal",
-        netascore_gpkg=Path("../data/netascore_20250908_181654.gpkg"),
+        # netascore_gpkg=Path("../data/netascore_20250908_181654.gpkg"),
         seed=None,
     )
 
