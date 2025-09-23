@@ -4,6 +4,7 @@ uvicorn api:app --host localhost --port 8002 --workers 1 --reload
 
 ```bash
 curl -X POST http://localhost:8002/jobs \
+  -H "Authorization: Bearer 59c65fda55209fffb2cdcdb3a374a47f15032cfee26090cbeacf6c8f032f5b1a" \
   -F "od_clusters_a=@/Users/robinwendel/Developer/mobility-lab/citwin-api/data/b_klynger.gpkg" \
   -F "od_clusters_b=@/Users/robinwendel/Developer/mobility-lab/citwin-api/data/a_klynger.gpkg" \
   -F "od_table=@/Users/robinwendel/Developer/mobility-lab/citwin-api/data/Data_2023_0099_Tabel_1.csv" \

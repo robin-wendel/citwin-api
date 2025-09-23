@@ -1,3 +1,5 @@
+import hmac
+import os
 import queue
 import threading
 import traceback
@@ -6,11 +8,16 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from dotenv import load_dotenv
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
 from pipeline.run import run_pipeline
+
+load_dotenv()
+
+API_KEY = os.getenv("API_KEY")
 
 BASE_JOBS_DIR = Path(__file__).parent / "jobs"
 BASE_JOBS_DIR.mkdir(parents=True, exist_ok=True)
@@ -84,6 +91,23 @@ WORKER_THREAD.start()
 
 app = FastAPI()
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+
+@app.middleware("http")
+async def verify_api_key(request: Request, call_next):
+    api_key = request.headers.get("Authorization")
+    if api_key and api_key.startswith("Bearer "):
+        api_key = api_key.split(" ", 1)[1]
+    else:
+        api_key = request.query_params.get("api_key")
+
+    if not api_key or not hmac.compare_digest(api_key, API_KEY):
+        return JSONResponse(
+            status_code=401,
+            content={"detail": "Unauthorized. Invalid API key."}
+        )
+
+    return await call_next(request)
 
 
 @app.post("/jobs")
