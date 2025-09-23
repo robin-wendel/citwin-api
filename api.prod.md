@@ -1,5 +1,5 @@
 ```bash
-uvicorn api:app --host localhost --port 8002 --root-path /api/citwin --workers 1
+uvicorn api:app --host localhost --port 8002 --workers 1 --root-path /api/citwin
 ```
 
 ```bash
