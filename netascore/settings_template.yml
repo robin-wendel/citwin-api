@@ -3,7 +3,7 @@ global:
   case_id: default_case
   target_srid: 0
 database:
-  host: netascore-db
+  host: localhost
   port: 5432
   dbname: postgres
   username: postgres
