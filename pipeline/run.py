@@ -1,3 +1,4 @@
+import os
 import shutil
 import uuid
 from pathlib import Path
@@ -5,6 +6,7 @@ from typing import Optional, Dict
 
 import geopandas as gpd
 import pandas as pd
+from dotenv import load_dotenv
 
 from pipeline.steps.build_graphs import build_graphs
 from pipeline.steps.disaggregate_data import distribute_points_in_raster, disaggregate_table_to_edges
@@ -13,10 +15,13 @@ from pipeline.steps.handle_data import ensure_wgs84, concat_gdfs, compute_bbox_s
 from pipeline.steps.netascore import update_settings, run_netascore
 from pipeline.steps.snap_points import build_balltree, snap_with_balltree
 
+env_path = Path(__file__).parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
+
 BASE_JOBS_DIR = Path(__file__).parent.parent / "jobs"
 BASE_JOBS_DIR.mkdir(parents=True, exist_ok=True)
 
-NETASCORE_DIR = Path(__file__).parent.parent / "netascore"
+NETASCORE_DIR = Path(os.getenv("NETASCORE_DIR"))
 NETASCORE_SETTINGS_TEMPLATE = Path(__file__).parent.parent / "netascore" / "settings_template.yml"
 
 
