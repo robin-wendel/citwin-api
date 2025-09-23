@@ -1,5 +1,5 @@
 ```bash
-uvicorn api:app --host localhost --port 8001 --root-path /api/citwin --workers 1
+uvicorn api:app --host localhost --port 8002 --root-path /api/citwin --workers 1
 ```
 
 ```bash
@@ -26,7 +26,6 @@ curl -s https://mobilitylab.geo.sbg.ac.at/api/citwin/jobs/8c9351e0-56a3-4b07-b7c
 ```
 
 ```bash
-curl -OJ https://mobilitylab.geo.sbg.ac.at/api/citwin/jobs/8c9351e0-56a3-4b07-b7c1-ddc0e2aae0fe/download/netascore_edges
-curl -OJ https://mobilitylab.geo.sbg.ac.at/api/citwin/jobs/8c9351e0-56a3-4b07-b7c1-ddc0e2aae0fe/download/netascore_nodes
+curl -OJ https://mobilitylab.geo.sbg.ac.at/api/citwin/jobs/8c9351e0-56a3-4b07-b7c1-ddc0e2aae0fe/download/netascore_gpkg
 curl -OJ https://mobilitylab.geo.sbg.ac.at/api/citwin/jobs/8c9351e0-56a3-4b07-b7c1-ddc0e2aae0fe/download/stops_updated
 ```
