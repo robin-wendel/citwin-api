@@ -27,7 +27,7 @@ def compute_path_index_average(G, path, index_ft='index_bike_ft', index_tf='inde
             length = d.get('length', 0)
             index_value = d.get(index_tf)
         else:
-            print("Warning: no edge between {} and {}".format(u, v))
+            print("warning: no edge between {} and {}".format(u, v))
             continue
 
         if index_value is not None:
@@ -66,7 +66,7 @@ def evaluate_stops(edges_gdf, stops_gdf, households_gdf, G_base, G_quality, G_ba
     edges_base = []
     edges_quality = []
 
-    for _, stop in tqdm(stops_gdf.iterrows(), total=len(stops_gdf), desc="Processing stops"):
+    for _, stop in tqdm(stops_gdf.iterrows(), total=len(stops_gdf), desc="processing stops"):
         stop_node_base = stop['node_id_base']
         stop_node_quality = stop['node_id_quality']
 
