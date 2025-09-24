@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import FastAPI, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
@@ -21,6 +21,20 @@ API_KEY = os.getenv("API_KEY")
 
 BASE_JOBS_DIR = Path(__file__).parent / "jobs"
 BASE_JOBS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def verify_api_key(request: Request):
+    api_key = None
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        api_key = auth_header.split(" ", 1)[1]
+
+    if not api_key:
+        api_key = request.query_params.get("api_key")
+
+    if not api_key or not hmac.compare_digest(api_key, API_KEY):
+        raise HTTPException(status_code=401, detail="unauthorized: invalid api key")
+
 
 # ======================================================================================================================
 # Jobs + Worker
@@ -93,24 +107,7 @@ app = FastAPI()
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
-@app.middleware("http")
-async def verify_api_key(request: Request, call_next):
-    api_key = request.headers.get("Authorization")
-    if api_key and api_key.startswith("Bearer "):
-        api_key = api_key.split(" ", 1)[1]
-    else:
-        api_key = request.query_params.get("api_key")
-
-    if not api_key or not hmac.compare_digest(api_key, API_KEY):
-        return JSONResponse(
-            status_code=401,
-            content={"detail": "Unauthorized. Invalid API key."}
-        )
-
-    return await call_next(request)
-
-
-@app.post("/jobs")
+@app.post("/jobs", dependencies=[Depends(verify_api_key)])
 async def create_job(
         od_clusters_a: UploadFile = File(...),
         od_clusters_b: UploadFile = File(...),
@@ -181,7 +178,7 @@ async def create_job(
     return {"job_id": job_id, "status": job["status"]}
 
 
-@app.get("/jobs/{job_id}")
+@app.get("/jobs/{job_id}", dependencies=[Depends(verify_api_key)])
 def get_job(job_id: str):
     with JOBS_LOCK:
         job = JOBS.get(job_id)
@@ -190,7 +187,7 @@ def get_job(job_id: str):
     return {k: v for k, v in job.items() if k != "traceback"}
 
 
-@app.get("/jobs/{job_id}/downloads")
+@app.get("/jobs/{job_id}/downloads", dependencies=[Depends(verify_api_key)])
 def list_downloads(job_id: str):
     with JOBS_LOCK:
         job = JOBS.get(job_id)
@@ -213,7 +210,7 @@ def list_downloads(job_id: str):
     return JSONResponse(result)
 
 
-@app.get("/jobs/{job_id}/download/{key}")
+@app.get("/jobs/{job_id}/download/{key}", dependencies=[Depends(verify_api_key)])
 def download_output(job_id: str, key: str):
     with JOBS_LOCK:
         job = JOBS.get(job_id)
