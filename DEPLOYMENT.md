@@ -43,7 +43,7 @@ conda env config vars set PROJ_LIB=C:\ProgramData\miniconda3\envs\citwin-api\Lib
 ```
 
 ```powershell
-nssm install citwin-api "C:\scripts\citwin-api\start_api.bat" stable
+nssm install citwin-api "C:\scripts\citwin-api\start.bat" stable
 nssm set citwin-api AppDirectory "C:\scripts\citwin-api"
 nssm set citwin-api AppExit Default Restart
 nssm set citwin-api AppStdout "C:\logs\citwin-api-stable-out.log"
@@ -65,7 +65,7 @@ conda env config vars set PROJ_LIB=C:\ProgramData\miniconda3\envs\citwin-api-dev
 ```
 
 ```powershell
-nssm install citwin-api-dev "C:\scripts\citwin-api-dev\start_api.bat" dev
+nssm install citwin-api-dev "C:\scripts\citwin-api-dev\start.bat" dev
 nssm set citwin-api-dev AppDirectory "C:\scripts\citwin-api-dev"
 nssm set citwin-api-dev AppExit Default Restart
 nssm set citwin-api-dev AppStdout "C:\logs\citwin-api-dev-out.log"
