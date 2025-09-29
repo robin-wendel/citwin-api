@@ -2,5 +2,6 @@ __pycache__/
 .idea/
 data/
 jobs/
-.env
+/.env*
 .DS_Store
+NOTES.md
