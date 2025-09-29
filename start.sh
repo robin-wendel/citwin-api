@@ -2,9 +2,9 @@
 
 # Usage: start.sh [CONDA_ENV] [API_PORT] [API_ROOT_PATH]
 
-CONDA_ENV="${1:-"citwin-api"}"
-API_PORT="${2:-"8000"}"
-API_ROOT_PATH="${3:-"/"}"
+CONDA_ENV="${1:-citwin-api}"
+API_PORT="${2:-8000}"
+API_ROOT_PATH="${3:-/}"
 
 # Activate Conda environment
 source /opt/miniconda3/bin/activate "$CONDA_ENV"
