@@ -2,10 +2,10 @@
 
 ## 1. Overview
 
-| Deployment  | Git Branch | Folder                    | Conda Environment | Service        | Port | Web Route       | .env File                 |
-|-------------|------------|---------------------------|-------------------|----------------|------|-----------------|---------------------------|
-| Production  | main       | C:\scripts\citwin-api     | citwin-api        | citwin-api     | 8002 | /api/citwin     | config\.env.prod.example  |
-| Development | dev        | C:\scripts\citwin-api-dev | citwin-api-dev    | citwin-api-dev | 9002 | /api/citwin/dev | config\.env.dev.example   |
+| Deployment  | Git Branch | Folder                    | Conda Environment | Service        | Port | Web Route       | Environment File  |
+|-------------|------------|---------------------------|-------------------|----------------|------|-----------------|-------------------|
+| Production  | main       | C:\scripts\citwin-api     | citwin-api        | citwin-api     | 8002 | /api/citwin     | .env.prod.example |
+| Development | dev        | C:\scripts\citwin-api-dev | citwin-api-dev    | citwin-api-dev | 9002 | /api/citwin/dev | .env.dev.example  |
 
 ## 2. Prerequisites
 
@@ -16,16 +16,17 @@
 
 ```batch
 git clone -b maintenance-25 https://github.com/plus-mobilitylab/netascore.git C:\scripts\netascore
-cd C:\scripts\netascore
 ```
 
 ```batch
+cd C:\scripts\netascore
 conda env create -f environment.yml
 conda activate netascore
 conda env config vars set PROJ_LIB=C:\ProgramData\miniconda3\envs\netascore\Library\share\proj
 ```
 
 ```batch
+cd C:\scripts\netascore
 conda run -n netascore python generate_index.py data/settings.yml
 ```
 
@@ -70,7 +71,6 @@ nssm start citwin-api
 
 ```batch
 git clone -b dev https://github.com/robin-wendel/citwin-api.git C:\scripts\citwin-api-dev
-cd C:\scripts\citwin-api-dev
 ```
 
 ```batch
@@ -85,6 +85,7 @@ copy config\.env.dev.example .env
 ```
 
 ```batch
+cd C:\scripts\citwin-api-dev
 conda env create -n citwin-api-dev -f environment.yml
 conda activate citwin-api-dev
 conda env config vars set PROJ_LIB=C:\ProgramData\miniconda3\envs\citwin-api-dev\Library\share\proj
