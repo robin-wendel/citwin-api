@@ -19,36 +19,36 @@ git clone -b maintenance-25 https://github.com/plus-mobilitylab/netascore.git C:
 ```
 
 ```batch
-cd C:\scripts\netascore
+cd /d C:\scripts\netascore
 conda env create -f environment.yml
 conda activate netascore
 conda env config vars set PROJ_LIB=C:\ProgramData\miniconda3\envs\netascore\Library\share\proj
 ```
 
 ```batch
-cd C:\scripts\netascore
+cd /d C:\scripts\netascore
 conda run -n netascore python generate_index.py data/settings.yml
 ```
 
 ## 4. Deploy CITWIN API: Production
 
 ```batch
-git clone -b prod https://github.com/robin-wendel/citwin-api.git C:\scripts\citwin-api
+git clone -b main https://github.com/robin-wendel/citwin-api.git C:\scripts\citwin-api
 ```
 
 ```batch
-cd C:\scripts\citwin-api
+cd /d C:\scripts\citwin-api
 git fetch --all
-git reset --hard origin/prod
+git reset --hard origin/main
 ```
 
 ```batch
-cd C:\scripts\citwin-api
+cd /d C:\scripts\citwin-api
 copy config\.env.prod.example .env
 ```
 
 ```batch
-cd C:\scripts\citwin-api
+cd /d C:\scripts\citwin-api
 conda env create -n citwin-api -f environment.yml
 conda activate citwin-api
 conda env config vars set PROJ_LIB=C:\ProgramData\miniconda3\envs\citwin-api\Library\share\proj
@@ -74,18 +74,18 @@ git clone -b dev https://github.com/robin-wendel/citwin-api.git C:\scripts\citwi
 ```
 
 ```batch
-cd C:\scripts\citwin-api-dev
+cd /d C:\scripts\citwin-api-dev
 git fetch --all
 git reset --hard origin/dev
 ```
 
 ```batch
-cd C:\scripts\citwin-api-dev
+cd /d C:\scripts\citwin-api-dev
 copy config\.env.dev.example .env
 ```
 
 ```batch
-cd C:\scripts\citwin-api-dev
+cd /d C:\scripts\citwin-api-dev
 conda env create -n citwin-api-dev -f environment.yml
 conda activate citwin-api-dev
 conda env config vars set PROJ_LIB=C:\ProgramData\miniconda3\envs\citwin-api-dev\Library\share\proj
