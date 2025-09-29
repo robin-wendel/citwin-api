@@ -2,10 +2,10 @@
 
 ## 1. Overview
 
-| Deployment | Git Branch | Folder                    | Conda Environment | Service        | Port | Web Route       | .env File         |
-|------------|------------|---------------------------|-------------------|----------------|------|-----------------|-------------------|
-| Stable     | stable     | C:\scripts\citwin-api     | citwin-api        | citwin-api     | 8002 | /api/citwin     | config\stable.env |
-| Dev        | dev        | C:\scripts\citwin-api-dev | citwin-api-dev    | citwin-api-dev | 9002 | /api/citwin/dev | config\dev.env    |
+| Deployment  | Git Branch | Folder                    | Conda Environment | Service        | Port | Web Route       | .env File                 |
+|-------------|------------|---------------------------|-------------------|----------------|------|-----------------|---------------------------|
+| Production  | main       | C:\scripts\citwin-api     | citwin-api        | citwin-api     | 8002 | /api/citwin     | config\.env.prod.example  |
+| Development | dev        | C:\scripts\citwin-api-dev | citwin-api-dev    | citwin-api-dev | 9002 | /api/citwin/dev | config\.env.dev.example   |
 
 ## 2. Prerequisites
 
@@ -14,36 +14,51 @@
 
 ## 3. Set up NetAScore
 
-```powershell
+```batch
 git clone -b maintenance-25 https://github.com/plus-mobilitylab/netascore.git C:\scripts\netascore
 cd C:\scripts\netascore
 ```
 
-```powershell
+```batch
 conda env create -f environment.yml
 conda activate netascore
 conda env config vars set PROJ_LIB=C:\ProgramData\miniconda3\envs\netascore\Library\share\proj
 ```
 
-```powershell
+```batch
 conda run -n netascore python generate_index.py data/settings.yml
 ```
 
-## 4. Deploy CITWIN API: Stable
+## 4. Deploy CITWIN API: Production
 
-```powershell
-git clone -b stable https://github.com/robin-wendel/citwin-api.git C:\scripts\citwin-api
-cd C:\scripts\citwin-api
+```batch
+git clone -b prod https://github.com/robin-wendel/citwin-api.git C:\scripts\citwin-api
 ```
 
-```powershell
+```batch
+cd C:\scripts\citwin-api
+git fetch --all
+git reset --hard origin/prod
+```
+
+```batch
+cd C:\scripts\citwin-api
+copy config\.env.prod.example .env
+```
+
+```batch
+cd C:\scripts\citwin-api
 conda env create -n citwin-api -f environment.yml
 conda activate citwin-api
 conda env config vars set PROJ_LIB=C:\ProgramData\miniconda3\envs\citwin-api\Library\share\proj
 ```
 
-```powershell
-nssm install citwin-api "C:\scripts\citwin-api\start.bat" stable
+```batch
+psql -U postgres -h localhost -p 5432 -c "CREATE DATABASE citwin_api_netascore"
+```
+
+```batch
+nssm install citwin-api "C:\scripts\citwin-api\start.bat" "citwin-api" "8002" "/api/citwin"
 nssm set citwin-api AppDirectory "C:\scripts\citwin-api"
 nssm set citwin-api AppExit Default Restart
 nssm set citwin-api AppStdout "C:\logs\citwin-api-out.log"
@@ -51,21 +66,36 @@ nssm set citwin-api AppStderr "C:\logs\citwin-api-err.log"
 nssm start citwin-api
 ```
 
-## 5. Deploy CITWIN API: Dev
+## 5. Deploy CITWIN API: Development
 
-```powershell
+```batch
 git clone -b dev https://github.com/robin-wendel/citwin-api.git C:\scripts\citwin-api-dev
 cd C:\scripts\citwin-api-dev
 ```
 
-```powershell
+```batch
+cd C:\scripts\citwin-api-dev
+git fetch --all
+git reset --hard origin/dev
+```
+
+```batch
+cd C:\scripts\citwin-api-dev
+copy config\.env.dev.example .env
+```
+
+```batch
 conda env create -n citwin-api-dev -f environment.yml
 conda activate citwin-api-dev
 conda env config vars set PROJ_LIB=C:\ProgramData\miniconda3\envs\citwin-api-dev\Library\share\proj
 ```
 
-```powershell
-nssm install citwin-api-dev "C:\scripts\citwin-api-dev\start.bat" dev
+```batch
+psql -U postgres -h localhost -p 5432 -c "CREATE DATABASE citwin_api_netascore_dev"
+```
+
+```batch
+nssm install citwin-api-dev "C:\scripts\citwin-api-dev\start.bat" "citwin-api-dev" "9002" "/api/citwin-dev"
 nssm set citwin-api-dev AppDirectory "C:\scripts\citwin-api-dev"
 nssm set citwin-api-dev AppExit Default Restart
 nssm set citwin-api-dev AppStdout "C:\logs\citwin-api-dev-out.log"
@@ -75,12 +105,12 @@ nssm start citwin-api-dev
 
 ## 6. Stop / Remove Services (Optional)
 
-```powershell
+```batch
 nssm stop citwin-api
-nssm remove citwin-api
+nssm remove citwin-api confirm
 ```
 
-```powershell
+```batch
 nssm stop citwin-api-dev
-nssm remove citwin-api-dev
+nssm remove citwin-api-dev confirm
 ```
