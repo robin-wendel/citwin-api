@@ -18,7 +18,7 @@ def update_settings(settings_input_path: Path, settings_output_path: Path, targe
 
     settings["database"]["host"] = os.getenv("DB_HOST")
     settings["database"]["port"] = int(os.getenv("DB_PORT"))
-    settings["database"]["dbname"] = os.getenv("DB_DBNAME")
+    settings["database"]["dbname"] = os.getenv("DB_NAME")
     settings["database"]["username"] = os.getenv("DB_USERNAME")
     settings["database"]["password"] = os.getenv("DB_PASSWORD")
     if not settings["database"]["password"]:
