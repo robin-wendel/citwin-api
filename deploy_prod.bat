@@ -22,7 +22,7 @@ if not exist "C:\ProgramData\miniconda3\envs\citwin-api" (
     call C:\ProgramData\miniconda3\Scripts\activate.bat citwin-api
     conda env config vars set PROJ_LIB=C:\ProgramData\miniconda3\envs\citwin-api\Library\share\proj
 ) else (
-    echo update conda environment
+    rem update conda environment
     rem conda env update -n citwin-api -f environment.yml
 )
 
@@ -39,3 +39,6 @@ if errorlevel 1060 (
     echo restart service
     nssm restart citwin-api
 )
+
+echo done
+pause
