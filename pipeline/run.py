@@ -87,6 +87,8 @@ def run_pipeline(
         od_clusters_gdf = concat_gdfs(od_clusters_a_gdf, od_clusters_b_gdf)
         target_srid = get_utm_srid(od_clusters_gdf)
         bbox_str = compute_bbox_str(od_clusters_gdf)
+        # target_srid = get_utm_srid(stops_gdf)
+        # bbox_str = compute_bbox_str(stops_gdf.to_crs(epsg=target_srid).geometry.buffer(10000).to_crs(epsg=4326))
         print("    target_srid:", target_srid)
         print("    bbox_str:", bbox_str)
         netascore_settings = NETASCORE_DIR / "data" / "settings.yml"
