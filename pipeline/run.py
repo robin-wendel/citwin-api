@@ -11,7 +11,8 @@ from dotenv import load_dotenv
 from pipeline.steps.build_graphs import build_graphs
 from pipeline.steps.disaggregate_data import distribute_points_in_raster, disaggregate_table_to_edges
 from pipeline.steps.evaluate_stops import evaluate_stops
-from pipeline.steps.handle_data import ensure_wgs84, concat_gdfs, compute_bbox_str, get_utm_srid
+from pipeline.steps.filter_network import add_network_distance
+from pipeline.steps.handle_data import ensure_wgs84, compute_bbox_str, get_utm_srid
 from pipeline.steps.netascore import update_settings, run_netascore
 from pipeline.steps.snap_points import build_balltree, snap_with_balltree
 
@@ -64,6 +65,23 @@ def run_pipeline(
     od_table_df = pd.read_csv(od_table, delimiter=';')
     stops_gdf = ensure_wgs84(gpd.read_file(stops))
 
+    target_srid = get_utm_srid(stops_gdf)
+    print("  target_srid:", target_srid)
+    stops_buffer_gdf = stops_gdf.to_crs(epsg=target_srid).geometry.buffer(7500).to_crs(epsg=4326)
+    bbox_str = compute_bbox_str(stops_buffer_gdf)
+    print("  bbox_str:", bbox_str)
+
+    # ==================================================================================================================
+    # filter data
+    # ==================================================================================================================
+
+    print("filter data")
+    print("  filter clusters by stops buffer")
+    mask_a = od_clusters_a_gdf.geometry.intersects(stops_buffer_gdf.union_all())
+    od_clusters_a_gdf = od_clusters_a_gdf[mask_a]
+    mask_b = od_clusters_b_gdf.geometry.intersects(stops_buffer_gdf.union_all())
+    od_clusters_b_gdf = od_clusters_b_gdf[mask_b]
+
     # ==================================================================================================================
     # disaggregate data
     # ==================================================================================================================
@@ -84,13 +102,6 @@ def run_pipeline(
     if netascore_gpkg is None:
         print("netascore")
         print("  update settings")
-        od_clusters_gdf = concat_gdfs(od_clusters_a_gdf, od_clusters_b_gdf)
-        target_srid = get_utm_srid(od_clusters_gdf)
-        bbox_str = compute_bbox_str(od_clusters_gdf)
-        # target_srid = get_utm_srid(stops_gdf)
-        # bbox_str = compute_bbox_str(stops_gdf.to_crs(epsg=target_srid).geometry.buffer(10000).to_crs(epsg=4326))
-        print("    target_srid:", target_srid)
-        print("    bbox_str:", bbox_str)
         netascore_settings = NETASCORE_DIR / "data" / "settings.yml"
         update_settings(NETASCORE_SETTINGS_TEMPLATE, netascore_settings, target_srid, bbox_str)
 
