@@ -5,6 +5,7 @@ import threading
 import traceback
 import uuid
 from datetime import datetime, timezone
+from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -12,8 +13,20 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse
+from pydantic import BaseModel, Field
 
 from pipeline.run import run_pipeline
+
+
+class CreateJobResponse(BaseModel):
+    job_id: str = Field(..., description="unique job ID")
+    status: str = Field(..., description="status of job", examples=["queued"])
+
+
+class OutputFormat(str, Enum):
+    geojson = "GeoJSON"
+    gpkg = "GPKG"
+
 
 load_dotenv()
 
@@ -107,24 +120,24 @@ app = FastAPI()
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
-@app.post("/jobs", dependencies=[Depends(verify_api_key)])
+@app.post("/jobs", response_model=CreateJobResponse, dependencies=[Depends(verify_api_key)])
 async def create_job(
-        od_clusters_a: UploadFile = File(...),
-        od_clusters_b: UploadFile = File(...),
-        od_table: UploadFile = File(...),
-        stops: UploadFile = File(...),
+        od_clusters_a: UploadFile = File(..., description="origin clusters file", examples=["b_klynger.gpkg"]),
+        od_clusters_b: UploadFile = File(..., description="destination clusters file", examples=["a_klynger.gpkg"]),
+        od_table: UploadFile = File(..., description="origin-destination table file", examples=["Data_2023_0099_Tabel_1.csv"]),
+        stops: UploadFile = File(..., description="public transport stops file", examples=["dynlayer.gpkg"]),
 
-        od_clusters_a_id_field: str = Form(...),
-        od_clusters_a_count_field: str = Form(...),
-        od_clusters_b_id_field: str = Form(...),
-        od_clusters_b_count_field: str = Form(...),
-        od_table_a_id_field: str = Form(...),
-        od_table_b_id_field: str = Form(...),
-        od_table_trips_field: str = Form(...),
+        od_clusters_a_id_field: str = Form(..., description="id field for origin clusters", examples=["klynge_id"]),
+        od_clusters_a_count_field: str = Form(..., description="count field for origin clusters", examples=["Beboere"]),
+        od_clusters_b_id_field: str = Form(..., description="id field for destination clusters", examples=["klynge_id"]),
+        od_clusters_b_count_field: str = Form(..., description="count field for destination clusters", examples=["Arbejdere"]),
+        od_table_a_id_field: str = Form(..., description="id field for origin clusters in origin-destination table", examples=["Bopael_klynge_id"]),
+        od_table_b_id_field: str = Form(..., description="id field for destination clusters in origin-destination table", examples=["Arbejde_klynge_id"]),
+        od_table_trips_field: str = Form(..., description="trips field in origin-destination table", examples=["Antal"]),
 
-        netascore_gpkg: Optional[UploadFile] = File(None),
-        output_format: Optional[str] = Form("GPKG"),
-        seed: Optional[int] = Form(None),
+        netascore_gpkg: Optional[UploadFile] = File(None, description="pre-generated netascore file"),
+        output_format: Optional[OutputFormat] = Form(OutputFormat.geojson, description="output format"),
+        seed: Optional[int] = Form(None, description="random seed for reproducibility of results"),
 ):
     job_id = str(uuid.uuid4())
     job_dir = (BASE_JOBS_DIR / job_id)
@@ -175,7 +188,7 @@ async def create_job(
         JOBS[job_id] = job
     JOB_QUEUE.put(job_id)
 
-    return {"job_id": job_id, "status": job["status"]}
+    return CreateJobResponse(job_id=job_id, status=job["status"])
 
 
 @app.get("/jobs/{job_id}", dependencies=[Depends(verify_api_key)])
