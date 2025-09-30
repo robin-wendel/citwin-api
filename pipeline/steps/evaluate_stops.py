@@ -66,12 +66,12 @@ def evaluate_stops(edges_gdf, stops_gdf, households_gdf, G_base, G_quality, G_ba
     edges_base = []
     edges_quality = []
 
-    for _, stop in tqdm(stops_gdf.iterrows(), total=len(stops_gdf), desc="processing stops"):
+    for _, stop in stops_gdf.iterrows():
         stop_node_base = stop['node_id_base']
         stop_node_quality = stop['node_id_quality']
 
-        lengths_base, paths_base = nx.single_source_dijkstra(G_base_reversed, stop_node_base, cutoff=3000, weight='length')
-        lengths_quality, paths_quality = nx.single_source_dijkstra(G_quality_reversed, stop_node_quality, cutoff=3000, weight='length')
+        lengths_base, paths_base = nx.single_source_dijkstra(G_base_reversed, stop_node_base, cutoff=3250, weight='length')
+        lengths_quality, paths_quality = nx.single_source_dijkstra(G_quality_reversed, stop_node_quality, cutoff=3250, weight='length')
 
         households_in_proximity = households_gdf[households_gdf['node_id'].isin(lengths_base.keys())].copy()
 
@@ -79,7 +79,7 @@ def evaluate_stops(edges_gdf, stops_gdf, households_gdf, G_base, G_quality, G_ba
         base_routes = []
         quality_routes = []
 
-        for _, household in tqdm(households_in_proximity.iterrows(), total=len(households_in_proximity), desc="Processing households", leave=False):
+        for _, household in households_in_proximity.iterrows():
             household_node = household['node_id']
 
             if household_node == stop_node_base:

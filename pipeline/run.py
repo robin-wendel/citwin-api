@@ -47,6 +47,7 @@ def run_pipeline(
 ) -> Dict[str, Path]:
     if job_dir is None:
         job_id = str(uuid.uuid4())
+        print("job_id:", job_id)
         job_dir = (BASE_JOBS_DIR / job_id)
     job_dir.mkdir(parents=True, exist_ok=True)
 
@@ -68,9 +69,8 @@ def run_pipeline(
     # ==================================================================================================================
 
     print("disaggregate data")
-    print("  distribute points in clusters a")
+    print("  distribute points in clusters")
     od_points_a_gdf = distribute_points_in_raster(od_clusters_a_gdf, od_clusters_a_id_field, od_clusters_a_count_field, seed)
-    print("  distribute points in clusters b")
     od_points_b_gdf = distribute_points_in_raster(od_clusters_b_gdf, od_clusters_b_id_field, od_clusters_b_count_field, seed)
     print("  disaggregate table to edges")
     od_edges_gdf = disaggregate_table_to_edges(od_points_a_gdf, od_points_b_gdf, od_table_df, od_table_a_id_field, od_table_b_id_field, od_table_trips_field, seed)
