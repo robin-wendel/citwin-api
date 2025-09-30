@@ -19,7 +19,7 @@ from pipeline.run import run_pipeline
 
 
 class CreateJobResponse(BaseModel):
-    job_id: str = Field(..., description="unique job ID")
+    job_id: str = Field(..., description="unique job ID", examples=["550e8400-e29b-41d4-a716-446655440000"])
     status: str = Field(..., description="status of job", examples=["queued"])
 
 
