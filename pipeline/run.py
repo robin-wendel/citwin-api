@@ -140,6 +140,23 @@ def run_pipeline(
     stops_gdf = snap_with_balltree(stops_gdf, balltree_quality, node_ids_quality, node_id_field="node_id_quality")
 
     # ==================================================================================================================
+    # filter network
+    # ==================================================================================================================
+
+    print("filter network")
+    print("  add network distance")
+    od_edges_gdf = add_network_distance(od_edges_gdf, od_points_a_gdf, od_points_b_gdf, G_base)
+
+    print("  remove edges and points with distance <= 3250 m")
+    od_edges_gdf = od_edges_gdf[od_edges_gdf['distance'] > 3250]
+
+    valid_a_ids = od_edges_gdf['point_a_id'].unique()
+    valid_b_ids = od_edges_gdf['point_b_id'].unique()
+
+    od_points_a_gdf = od_points_a_gdf[od_points_a_gdf['point_id'].isin(valid_a_ids)]
+    od_points_b_gdf = od_points_b_gdf[od_points_b_gdf['point_id'].isin(valid_b_ids)]
+
+    # ==================================================================================================================
     # evaluate stops
     # ==================================================================================================================
 
