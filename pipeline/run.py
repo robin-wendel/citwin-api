@@ -41,7 +41,7 @@ def run_pipeline(
         od_table_trips_field: str,
 
         netascore_gpkg: Optional[Path] = None,
-        output_format: Optional[str] = "GPKG",
+        output_format: Optional[str] = "GeoJSON",
         seed: Optional[int] = None,
 
         job_dir: Optional[Path] = None,
@@ -121,8 +121,8 @@ def run_pipeline(
     # ==================================================================================================================
 
     print("build graphs")
-    cache_dir = Path(__file__).parent.parent / "jobs" / "cache"
-    G_base, G_base_reversed, G_quality, G_quality_reversed = build_graphs(netascore_edges_gdf, netascore_nodes_gdf, cache_dir)
+    # cache_dir = Path(__file__).parent.parent / "jobs" / "cache"
+    G_base, G_base_reversed, G_quality, G_quality_reversed = build_graphs(netascore_edges_gdf, netascore_nodes_gdf)
 
     # ==================================================================================================================
     # snap points
@@ -192,15 +192,8 @@ def run_pipeline(
     households_gdf.to_file(households, driver=driver)
 
     outputs = {
-        "od_points_a": od_points_a,
-        "od_points_b": od_points_b,
-        "od_edges": od_edges,
-        "edges_base": edges_base,
-        "edges_quality": edges_quality,
-        "routes_base": routes_base,
-        "routes_quality": routes_quality,
         "stops_updated": stops_updated,
-        "households": households,
+        "households": households
     }
 
     if generated_netascore:
@@ -223,6 +216,7 @@ def main():
         od_table_b_id_field="Arbejssted_klynge_id",
         od_table_trips_field="Antal",
         # netascore_gpkg=Path("../data/netascore_20250908_181654.gpkg"),
+        output_format="GPKG",
         seed=None,
     )
 
