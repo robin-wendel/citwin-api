@@ -161,7 +161,7 @@ async def create_job(
         netascore_gpkg_path.write_bytes(await netascore_gpkg.read())
 
     job = {
-        "id": job_id,
+        "job_id": job_id,
         "status": "queued",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "job_dir": str(job_dir),
@@ -197,7 +197,7 @@ def get_job(job_id: str):
         job = JOBS.get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="job not found")
-    return {k: v for k, v in job.items() if k != "traceback"}
+    return {k: v for k, v in job.items() if k in {"job_id", "status", "created_at", "started_at", "error", "finished_at"}}
 
 
 @app.get("/jobs/{job_id}/downloads", dependencies=[Depends(verify_api_key)])
