@@ -3,11 +3,11 @@
 ## 1. Local Testing
 
 ```bash
-uvicorn api:app --host localhost --port 8002 --workers 1 --reload
+uvicorn api:app --host localhost --port 8000 --workers 1 --reload
 ```
 
 ```bash
-curl -X POST http://localhost:8002/jobs \
+curl -X POST http://localhost:8000/jobs \
   -H "Authorization: Bearer 59c65fda55209fffb2cdcdb3a374a47f15032cfee26090cbeacf6c8f032f5b1a" \
   -F "od_clusters_a=@/Users/robinwendel/Developer/mobility-lab/citwin-api/data/b_klynger.gpkg" \
   -F "od_clusters_b=@/Users/robinwendel/Developer/mobility-lab/citwin-api/data/a_klynger.gpkg" \
@@ -20,24 +20,25 @@ curl -X POST http://localhost:8002/jobs \
   -F "od_table_a_id_field=Bopael_klynge_id" \
   -F "od_table_b_id_field=Arbejssted_klynge_id" \
   -F "od_table_trips_field=Antal" \
-  -F "netascore_gpkg=@/Users/robinwendel/Developer/mobility-lab/citwin-api/data/netascore_20250908_181654.gpkg" | jq
+  -F "netascore_gpkg=@/Users/robinwendel/Developer/mobility-lab/citwin-api/data/netascore_20250908_181654.gpkg" \
+  -F "output_format=GPKG" | jq
 ```
 
 ```bash
-curl -s http://localhost:8002/jobs/<JOB_ID> \
+curl -s http://localhost:8000/jobs/<JOB_ID> \
   -H "Authorization: Bearer 59c65fda55209fffb2cdcdb3a374a47f15032cfee26090cbeacf6c8f032f5b1a" | jq
 ```
 
 ```bash
-curl -s http://localhost:8002/jobs/<JOB_ID>/downloads \
+curl -s http://localhost:8000/jobs/<JOB_ID>/downloads \
   -H "Authorization: Bearer 59c65fda55209fffb2cdcdb3a374a47f15032cfee26090cbeacf6c8f032f5b1a" | jq
 ```
 
 ```bash
-curl -OJ http://localhost:8002/jobs/<JOB_ID>/download/netascore_gpkg \
+curl -OJ http://localhost:8000/jobs/<JOB_ID>/download/netascore_gpkg \
   -H "Authorization: Bearer 59c65fda55209fffb2cdcdb3a374a47f15032cfee26090cbeacf6c8f032f5b1a" | jq
   
-curl -OJ http://localhost:8002/jobs/<JOB_ID>/download/stops_updated \
+curl -OJ http://localhost:8000/jobs/<JOB_ID>/download/stops_updated \
   -H "Authorization: Bearer 59c65fda55209fffb2cdcdb3a374a47f15032cfee26090cbeacf6c8f032f5b1a" | jq
 ```
 
@@ -56,7 +57,8 @@ curl -X POST https://mobilitylab.geo.sbg.ac.at/api/citwin/jobs \
   -F "od_clusters_b_count_field=Arbejdere" \
   -F "od_table_a_id_field=Bopael_klynge_id" \
   -F "od_table_b_id_field=Arbejssted_klynge_id" \
-  -F "od_table_trips_field=Antal" | jq
+  -F "od_table_trips_field=Antal" \
+  -F "output_format=GPKG" | jq
 ```
 
 ```bash
