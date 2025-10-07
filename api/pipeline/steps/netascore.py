@@ -5,7 +5,7 @@ from pathlib import Path
 import yaml
 
 COMMANDS = {
-    "conda": ["conda", "run", "-n", "netascore", "python", "generate_index.py", "data/settings.yml"],
+    "conda": ["conda", "run", "-n", "citwin-api", "python", "generate_index.py", "data/settings.yml"],
     "docker": ["docker", "compose", "run", "--rm", "netascore", "data/settings.yml"],
 }
 
