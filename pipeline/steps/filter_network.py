@@ -1,7 +1,6 @@
 import geopandas as gpd
 import networkx as nx
 import pandas as pd
-from tqdm import tqdm
 
 
 def add_network_distance(od_edges_gdf, od_points_a_gdf, od_points_b_gdf, G_base) -> gpd.GeoDataFrame:
@@ -18,6 +17,7 @@ def add_network_distance(od_edges_gdf, od_points_a_gdf, od_points_b_gdf, G_base)
                 return None
         return None
 
-    od_edges_gdf['distance'] = [get_network_distance(row) for row in tqdm(od_edges_gdf.itertuples(index=False), total=len(od_edges_gdf), desc="  processing edges")]
+    print("  processing edges")
+    od_edges_gdf['distance'] = [get_network_distance(row) for row in od_edges_gdf.itertuples(index=False)]
 
     return od_edges_gdf
