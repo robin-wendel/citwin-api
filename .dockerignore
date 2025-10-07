@@ -1,10 +1,25 @@
-.venv/
-data/*
-!data/netascore_20250908_181654.gpkg
-jobs/
-!jobs/cache/
-netascore/
-.DS_Store
 .git/
 .idea/
-__pycache__/
+
+**/.DS_Store
+**/__pycache__/
+*.pyc
+
+**/.env.*
+environment.yml
+
+data/
+# !data/netascore_20250908_181654.gpkg
+jobs/
+# !jobs/cache/
+
+# netascore/
+
+config/
+deploy.ps1
+start.bat
+start.sh
+
+.dockerignore
+.gitignore
+*.md

@@ -1,3 +1,5 @@
+# Docker
+
 ```bash
 docker build -t citwin-api .
 ```
@@ -11,11 +13,17 @@ docker stop citwin-api
 docker rm citwin-api
 ```
 
+# Docker Compose
 
 ```bash
 docker compose up --build api
 ```
 
+```bash
+docker compose down
+```
+
+# Cleanup
 
 ```bash
 docker builder prune -a -f
