@@ -9,7 +9,7 @@ services:
       - DB_USERNAME=${DB_USERNAME}
       - DB_PASSWORD=${DB_PASSWORD}
     volumes:
-    - ./data:/usr/src/netascore/data
+      - netascore_data:/usr/src/netascore/data
     command: "examples/settings_osm_query.yml"
     depends_on:
       netascore-db:
@@ -28,3 +28,7 @@ services:
       interval: 10s
       timeout: 20s
       retries: 120
+
+volumes:
+  netascore_data:
+    external: true

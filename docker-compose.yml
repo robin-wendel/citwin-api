@@ -1,12 +1,12 @@
 services:
   api:
-    build:
-      context: .
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ./netascore:/netascore
-    working_dir: /app
-    environment:
-      - DOCKER_HOST=unix:///var/run/docker.sock
+    build: .
     ports:
       - "8000:8000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - netascore_data:/app/netascore/data
+
+volumes:
+  netascore_data:
+    name: netascore_data

@@ -1,0 +1,11 @@
+fastapi
+geopandas
+networkx
+numpy
+pandas
+python-dotenv
+python-multipart
+pyyaml
+scikit-learn
+shapely
+uvicorn
