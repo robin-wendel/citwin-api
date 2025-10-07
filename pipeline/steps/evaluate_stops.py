@@ -2,7 +2,6 @@ import geopandas as gpd
 import networkx as nx
 import pandas as pd
 from shapely.ops import linemerge
-from tqdm import tqdm
 
 def compute_path_geometry(G, path):
     lines = []
