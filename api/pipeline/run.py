@@ -8,21 +8,21 @@ import geopandas as gpd
 import pandas as pd
 from dotenv import load_dotenv
 
-from pipeline.steps.build_graphs import build_graphs
-from pipeline.steps.disaggregate_data import distribute_points_in_raster, disaggregate_table_to_edges
-from pipeline.steps.evaluate_stops import evaluate_stops
-from pipeline.steps.filter_network import add_network_distance
-from pipeline.steps.handle_data import ensure_wgs84, compute_bbox_str, get_utm_srid
-from pipeline.steps.netascore import update_settings, run_netascore
-from pipeline.steps.snap_points import build_balltree, snap_with_balltree
+from api.pipeline.steps.build_graphs import build_graphs
+from api.pipeline.steps.disaggregate_data import distribute_points_in_raster, disaggregate_table_to_edges
+from api.pipeline.steps.evaluate_stops import evaluate_stops
+from api.pipeline.steps.filter_network import add_network_distance
+from api.pipeline.steps.handle_data import ensure_wgs84, compute_bbox_str, get_utm_srid
+from api.pipeline.steps.netascore import update_settings, run_netascore
+from api.pipeline.steps.snap_points import build_balltree, snap_with_balltree
 
-env_path = Path(__file__).parent.parent / ".env"
+env_path = Path(__file__).resolve().parents[2] / ".env"
 load_dotenv(dotenv_path=env_path)
 
 NETASCORE_DIR = Path(os.getenv("NETASCORE_DIR"))
-NETASCORE_SETTINGS_TEMPLATE = Path(__file__).parent.parent / "netascore" / "settings_template.yml"
+NETASCORE_SETTINGS_TEMPLATE = Path(__file__).resolve().parents[2] / "netascore" / "settings_template.yml"
 
-BASE_JOBS_DIR = Path(__file__).parent.parent / "jobs"
+BASE_JOBS_DIR = Path(__file__).resolve().parents[1] / "jobs"
 BASE_JOBS_DIR.mkdir(parents=True, exist_ok=True)
 
 
@@ -121,7 +121,7 @@ def run_pipeline(
     # ==================================================================================================================
 
     print("build graphs")
-    # cache_dir = Path(__file__).parent.parent / "jobs" / "cache"
+    # cache_dir = Path(__file__).resolve().parents[1] / "jobs" / "cache"
     G_base, G_base_reversed, G_quality, G_quality_reversed = build_graphs(netascore_edges_gdf, netascore_nodes_gdf)
 
     # ==================================================================================================================
@@ -199,15 +199,17 @@ def run_pipeline(
     if generated_netascore:
         outputs["netascore_gpkg"] = netascore_gpkg
 
+    print("done")
+
     return outputs
 
 
 def main():
     run_pipeline(
-        od_clusters_a=Path("../data/b_klynger.gpkg"),
-        od_clusters_b=Path("../data/a_klynger.gpkg"),
-        od_table=Path("../data/Data_2023_0099_Tabel_1.csv"),
-        stops=Path("../data/dynlayer.gpkg"),
+        od_clusters_a=Path("../../data/b_klynger.gpkg"),
+        od_clusters_b=Path("../../data/a_klynger.gpkg"),
+        od_table=Path("../../data/Data_2023_0099_Tabel_1.csv"),
+        stops=Path("../../data/dynlayer.gpkg"),
         od_clusters_a_id_field="klynge_id",
         od_clusters_a_count_field="Beboere",
         od_clusters_b_id_field="klynge_id",
@@ -215,7 +217,7 @@ def main():
         od_table_a_id_field="Bopael_klynge_id",
         od_table_b_id_field="Arbejssted_klynge_id",
         od_table_trips_field="Antal",
-        # netascore_gpkg=Path("../data/netascore_20250908_181654.gpkg"),
+        # netascore_gpkg=Path("../../data/netascore_20250908_181654.gpkg"),
         output_format="GPKG",
         seed=None,
     )

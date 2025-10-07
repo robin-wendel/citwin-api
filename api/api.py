@@ -15,7 +15,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
-from pipeline.run import run_pipeline
+from api.pipeline.run import run_pipeline
 
 
 class CreateJobResponse(BaseModel):
@@ -32,7 +32,7 @@ load_dotenv()
 
 API_KEY = os.getenv("API_KEY")
 
-BASE_JOBS_DIR = Path(__file__).parent / "jobs"
+BASE_JOBS_DIR = Path(__file__).resolve().parents[0] / "jobs"
 BASE_JOBS_DIR.mkdir(parents=True, exist_ok=True)
 
 
