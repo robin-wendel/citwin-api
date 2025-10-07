@@ -3,7 +3,9 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - python=3.13
+  - python=3.13.7
+
+  # api
   - fastapi
   - geopandas
   - networkx
@@ -14,3 +16,14 @@ dependencies:
   - scikit-learn
   - shapely
   - uvicorn
+
+  # netascore
+  - gdal=3.10.3
+  - libgdal=3.10.3
+  - psycopg2
+  - pyyaml
+  - requests
+  - pip
+  - pip:
+    - jinjasql2
+    - osm2geojson
