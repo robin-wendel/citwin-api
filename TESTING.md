@@ -3,7 +3,7 @@
 ## 1. Local Testing
 
 ```bash
-uvicorn api:app --host localhost --port 8000 --workers 1 --reload
+uvicorn api.api:app --host localhost --port 8000 --workers 1 --reload
 ```
 
 ```bash
