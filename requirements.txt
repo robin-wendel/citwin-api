@@ -4,7 +4,8 @@ geopandas
 networkx
 numpy
 pandas
-python-dotenv
+pydantic
+pydantic-settings
 python-multipart
 pyyaml
 scikit-learn

@@ -11,6 +11,8 @@ dependencies:
   - networkx
   - numpy
   - pandas
+  - pydantic
+  - pydantic-settings
   - python-multipart
   - pyyaml
   - scikit-learn
