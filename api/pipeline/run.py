@@ -13,9 +13,8 @@ from api.pipeline.steps.disaggregate_data import distribute_points_in_raster, di
 from api.pipeline.steps.evaluate_stops import evaluate_stops
 from api.pipeline.steps.filter_network import add_network_distance
 from api.pipeline.steps.handle_data import ensure_wgs84, compute_bbox_str, get_utm_srid
-from api.pipeline.steps.netascore import update_settings, run_netascore
+from api.pipeline.steps.prepare_netascore import update_settings, run_netascore
 from api.pipeline.steps.snap_points import build_balltree, snap_with_balltree
-
 
 logger = logging.getLogger(__name__)
 
