@@ -77,7 +77,7 @@ def save_cached_graphs(cache_dir: Path, **graphs) -> None:
     for name, graph in graphs.items():
         file_path = cache_dir / f"{name}.pkl"
         with open(file_path, "wb") as f:
-            pickle.dump(graph, f)
+            pickle.dump(graph, f)  # type: ignore[arg-type]
 
 
 def build_graphs(
