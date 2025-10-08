@@ -1,4 +1,3 @@
-import os
 import shutil
 import uuid
 from pathlib import Path
@@ -6,8 +5,8 @@ from typing import Optional, Dict
 
 import geopandas as gpd
 import pandas as pd
-from dotenv import load_dotenv
 
+from api.paths import BASE_JOBS_DIR, NETASCORE_DIR, NETASCORE_SETTINGS_TEMPLATE
 from api.pipeline.steps.build_graphs import build_graphs
 from api.pipeline.steps.disaggregate_data import distribute_points_in_raster, disaggregate_table_to_edges
 from api.pipeline.steps.evaluate_stops import evaluate_stops
@@ -15,15 +14,6 @@ from api.pipeline.steps.filter_network import add_network_distance
 from api.pipeline.steps.handle_data import ensure_wgs84, compute_bbox_str, get_utm_srid
 from api.pipeline.steps.netascore import update_settings, run_netascore
 from api.pipeline.steps.snap_points import build_balltree, snap_with_balltree
-
-env_path = Path(__file__).resolve().parents[2] / ".env"
-load_dotenv(dotenv_path=env_path)
-
-NETASCORE_DIR = Path(os.getenv("NETASCORE_DIR"))
-NETASCORE_SETTINGS_TEMPLATE = Path(__file__).resolve().parents[2] / "netascore" / "settings_template.yml"
-
-BASE_JOBS_DIR = Path(__file__).resolve().parents[1] / "jobs"
-BASE_JOBS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def run_pipeline(
@@ -48,8 +38,10 @@ def run_pipeline(
 ) -> Dict[str, Path]:
     if job_dir is None:
         job_id = str(uuid.uuid4())
-        print("job_id:", job_id)
         job_dir = (BASE_JOBS_DIR / job_id)
+    else:
+        job_id = job_dir.name
+    print("job_id:", job_id)
     job_dir.mkdir(parents=True, exist_ok=True)
 
     if output_format not in {"GPKG", "GeoJSON"}:
@@ -102,14 +94,22 @@ def run_pipeline(
     if netascore_gpkg is None:
         print("netascore")
         print("  update settings")
-        netascore_settings = NETASCORE_DIR / "data" / "settings.yml"
-        update_settings(NETASCORE_SETTINGS_TEMPLATE, netascore_settings, target_srid, bbox_str)
+        netascore_data_dir = NETASCORE_DIR / "data"
+        netascore_data_dir.mkdir(parents=True, exist_ok=True)
+
+        shutil.copy(NETASCORE_DIR / "examples" / "profile_bike.yml", netascore_data_dir / "profile_bike.yml")
+        shutil.copy(NETASCORE_DIR / "examples" / "profile_walk.yml", netascore_data_dir / "profile_walk.yml")
+
+        case_id = "default_case"
+        netascore_settings = netascore_data_dir / "settings.yml"
+        update_settings(NETASCORE_SETTINGS_TEMPLATE, netascore_settings, target_srid, bbox_str, case_id)
 
         print("  run netascore")
-        run_netascore(NETASCORE_DIR)
-        netascore_gpkg_tmp = NETASCORE_DIR / "data" / f"netascore_default_case.gpkg"
+        run_netascore(NETASCORE_DIR, netascore_settings)
+        netascore_gpkg_tmp = netascore_data_dir / f"netascore_{case_id}.gpkg"
         netascore_gpkg = job_dir / "netascore.gpkg"
         shutil.copy(netascore_gpkg_tmp, netascore_gpkg)
+        shutil.rmtree(netascore_data_dir, ignore_errors=True)
 
         generated_netascore = True
 

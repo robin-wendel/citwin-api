@@ -12,37 +12,15 @@
 - Install NSSM: https://nssm.cc/download, install to C:\nssm, add to Path
 - Install osm2pgsql: https://osm2pgsql.org, install to C:\osm2pgsql, add to Path
 
-## 3. Set up NetAScore
-
-```batch
-git clone -b maintenance-25 https://github.com/plus-mobilitylab/netascore.git C:\scripts\netascore
-```
-
-```batch
-conda env create -f C:\scripts\netascore\environment.yml
-conda run -n netascore conda env config vars set PROJ_LIB=C:\ProgramData\miniconda3\envs\netascore\Library\share\proj
-```
-
-```batch
-cd /d C:\scripts\netascore
-conda run -n netascore python generate_index.py data/settings.yml
-```
-
-## 4. Deploy CITWIN API: Production
+## 3. Deploy CITWIN API: Production
 
 ```bash
 ssh b1003527@zgis244.geo.sbg.ac.at 'powershell -Command "git clone --branch main https://github.com/robin-wendel/citwin-api.git C:/services/citwin-api"'
-```
-
-```bash
 scp .env.prod b1003527@zgis244.geo.sbg.ac.at:C:/services/citwin-api/.env
 ```
 
 ```bash
 ssh b1003527@zgis244.geo.sbg.ac.at 'powershell -Command "git -C C:/services/citwin-api fetch origin; git -C C:/services/citwin-api reset --hard origin/main"'
-```
-
-```bash
 ssh b1003527@zgis244.geo.sbg.ac.at 'powershell -File C:/services/citwin-api/deploy.ps1 -CondaEnv "citwin-api" -Database "citwin_api_netascore" -Password "<password>" -NssmService "citwin-api" -ApiPort "8002" -ApiRootPath "/api/citwin"'
 ```
 
@@ -53,7 +31,7 @@ ssh b1003527@zgis244.geo.sbg.ac.at 'powershell -Command "Remove-Item -Path 'C:/P
 ssh b1003527@zgis244.geo.sbg.ac.at 'powershell -Command "Remove-Item -Path 'C:/services/citwin-api' -Recurse -Force"'
 ```
 
-## 5. Deploy CITWIN API: Development
+## 4. Deploy CITWIN API: Development
 
 ```bash
 ssh b1003527@zgis244.geo.sbg.ac.at 'powershell -Command "git clone --branch main https://github.com/robin-wendel/citwin-api.git C:/services/citwin-api-dev"'

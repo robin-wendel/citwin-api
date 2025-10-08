@@ -5,20 +5,16 @@
 **/__pycache__/
 *.pyc
 
-**/.env.*
+.env
+.env.*
 environment.yml
 
-data/
-# !data/netascore_20250908_181654.gpkg
-jobs/
-# !jobs/cache/
+/data/
+/jobs/
 
-# netascore/
-
-config/
-deploy.ps1
-start.bat
-start.sh
+*.ps1
+*.bat
+*.sh
 
 .dockerignore
 .gitignore

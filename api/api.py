@@ -1,5 +1,4 @@
 import hmac
-import os
 import queue
 import threading
 import traceback
@@ -9,12 +8,13 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from dotenv import load_dotenv
 from fastapi import FastAPI, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
+from api.config import settings
+from api.paths import BASE_JOBS_DIR
 from api.pipeline.run import run_pipeline
 
 
@@ -28,12 +28,7 @@ class OutputFormat(str, Enum):
     gpkg = "GPKG"
 
 
-load_dotenv()
-
-API_KEY = os.getenv("API_KEY")
-
-BASE_JOBS_DIR = Path(__file__).resolve().parents[0] / "jobs"
-BASE_JOBS_DIR.mkdir(parents=True, exist_ok=True)
+API_KEY = settings.api_key
 
 
 def verify_api_key(request: Request):
