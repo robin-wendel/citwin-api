@@ -14,7 +14,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from api.config import settings
-from api.paths import BASE_JOBS_DIR
+from api.paths import JOBS_DIR
 from api.pipeline.run import run_pipeline
 
 
@@ -135,7 +135,7 @@ async def create_job(
         seed: Optional[int] = Form(None, description="random seed for reproducibility of results"),
 ):
     job_id = str(uuid.uuid4())
-    job_dir = (BASE_JOBS_DIR / job_id)
+    job_dir = (JOBS_DIR / job_id)
     job_dir.mkdir(parents=True, exist_ok=True)
 
     od_clusters_a_path = job_dir / f"od_clusters_a{Path(od_clusters_a.filename).suffix}"
