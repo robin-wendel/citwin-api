@@ -88,13 +88,11 @@ class PipelineContext:
 
 def step(func):
     def wrapper(ctx: PipelineContext, *args, **kwargs):
-        logger.info(f"⭘ {func.__name__.replace('_', ' ').replace(' step', '')}")
-        
+        logger.info(f"◯ {func.__name__.replace('_', ' ')}")
         t0 = time.time()
         result = func(ctx, *args, **kwargs)
         t1 = time.time()
-        
-        logger.info(f"● {func.__name__.replace('_', ' ').replace(' step', '')} ({t1 - t0:.1f} s)")
+        logger.info(f"● {func.__name__.replace('_', ' ')} ({t1 - t0:.1f} s)")
         return result
     return wrapper
 
@@ -115,7 +113,7 @@ def handle_data(ctx, od_clusters_a, od_clusters_b, od_table, stops):
     ctx.bbox_str = compute_bbox_str(ctx.stops_buffer_gdf)
     logger.info(f"– bbox_str: {ctx.bbox_str}")
 
-    logger.info(f"– filtering clusters within distance <= {DISTANCE_THRESHOLD * 2} m")
+    logger.info(f"– keeping clusters within distance <= {DISTANCE_THRESHOLD * 2} m")
     ctx.od_clusters_a_gdf = filter_gdf(ctx.od_clusters_a_gdf, ctx.stops_buffer_gdf)
     ctx.od_clusters_b_gdf = filter_gdf(ctx.od_clusters_b_gdf, ctx.stops_buffer_gdf)
 
@@ -123,9 +121,11 @@ def handle_data(ctx, od_clusters_a, od_clusters_b, od_table, stops):
 @step
 def disaggregate_data(ctx, fields):
     a_id, a_count, b_id, b_count, t_a_id, t_b_id, t_trips = fields
+
     logger.info("– distribute points in clusters")
     ctx.od_points_a_gdf = distribute_points_in_raster(ctx.od_clusters_a_gdf, a_id, a_count, ctx.seed)
     ctx.od_points_b_gdf = distribute_points_in_raster(ctx.od_clusters_b_gdf, b_id, b_count, ctx.seed)
+
     logger.info("– disaggregate table to edges")
     ctx.od_edges_gdf = disaggregate_table_to_edges(ctx.od_points_a_gdf, ctx.od_points_b_gdf, ctx.od_table_df, t_a_id, t_b_id, t_trips, ctx.seed)
 
@@ -133,21 +133,19 @@ def disaggregate_data(ctx, fields):
 @step
 def prepare_netascore(ctx):
     if ctx.netascore_gpkg is None:
-        logger.info("– update settings")
+        case_id = "default_case"
         netascore_data_dir = NETASCORE_DIR / "data"
         netascore_data_dir.mkdir(parents=True, exist_ok=True)
 
+        logger.info("– update settings")
         shutil.copy(NETASCORE_PROFILE_BIKE, netascore_data_dir / "profile_bike.yml")
         shutil.copy(NETASCORE_PROFILE_WALK, netascore_data_dir / "profile_walk.yml")
-
-        case_id = "default_case"
         update_settings(NETASCORE_SETTINGS, netascore_data_dir / "settings.yml", ctx.target_srid, ctx.bbox_str, case_id)
 
         logger.info("– run netascore")
         run_netascore(NETASCORE_DIR, netascore_data_dir / "settings.yml")
-        netascore_gpkg_tmp = netascore_data_dir / f"netascore_{case_id}.gpkg"
         ctx.netascore_gpkg = ctx.job_dir / "netascore.gpkg"
-        shutil.copy(netascore_gpkg_tmp, ctx.netascore_gpkg)
+        shutil.copy(netascore_data_dir / f"netascore_{case_id}.gpkg", ctx.netascore_gpkg)
         shutil.rmtree(netascore_data_dir, ignore_errors=True)
 
         ctx.generated_netascore = True
@@ -190,10 +188,8 @@ def filter_network(ctx):
 
     logger.info(f"– removing edges and points with distance > {DISTANCE_THRESHOLD} m")
     ctx.od_edges_gdf = ctx.od_edges_gdf[ctx.od_edges_gdf["distance"] <= DISTANCE_THRESHOLD]
-
     valid_a_ids = ctx.od_edges_gdf["point_a_id"].unique()
     valid_b_ids = ctx.od_edges_gdf["point_b_id"].unique()
-
     ctx.od_points_a_gdf = ctx.od_points_a_gdf[ctx.od_points_a_gdf["point_id"].isin(valid_a_ids)]
     ctx.od_points_b_gdf = ctx.od_points_b_gdf[ctx.od_points_b_gdf["point_id"].isin(valid_b_ids)]
 
@@ -274,7 +270,8 @@ def run_pipeline(
 
     job_dir.mkdir(parents=True, exist_ok=True)
 
-    logger.info(f"▶ job_id: {job_id}")
+    logger.info(f"□ job_id: {job_id}")
+    t0 = time.time()
 
     ctx = PipelineContext(
         job_id=job_id,
@@ -299,5 +296,7 @@ def run_pipeline(
     evaluate_stops(ctx, stops_id_field)
     outputs = export_results(ctx)
 
-    logger.info(f"■ job_id: {job_id}")
+    t1 = time.time()
+    logger.info(f"■ job_id: {job_id} ({t1 - t0:.1f} s)")
+
     return outputs

@@ -1,8 +1,11 @@
 import hmac
 import queue
+import shutil
 import threading
+import time
 import traceback
 import uuid
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
@@ -30,7 +33,7 @@ class OutputFormat(str, Enum):
 
 API_KEY = settings.api_key
 
-setup_logging()
+logger = setup_logging()
 
 
 def verify_api_key(request: Request):
@@ -105,15 +108,50 @@ def job_worker():
         finally:
             JOB_QUEUE.task_done()
 
+# ----------------------------------------------------------------------------------------------------------------------
+# cleaner
+# ----------------------------------------------------------------------------------------------------------------------
 
-WORKER_THREAD = threading.Thread(target=job_worker, daemon=True)
-WORKER_THREAD.start()
+def delete_old_jobs():
+    now = datetime.now(timezone.utc)
+    for job_dir in JOBS_DIR.iterdir():
+        if job_dir.is_dir():
+            created_at = datetime.fromtimestamp(job_dir.stat().st_ctime, tz=timezone.utc)
+            if (now - created_at).total_seconds() > 24 * 3600:
+                shutil.rmtree(job_dir, ignore_errors=True)
+
+
+def delete_old_jobs_periodically():
+    delete_old_jobs()
+    while True:
+        time.sleep(3600)
+        now = datetime.now(timezone.utc)
+        with JOBS_LOCK:
+            for job_id, job in list(JOBS.items()):
+                created_at = datetime.fromisoformat(job["created_at"])
+                if (now - created_at).total_seconds() > 24 * 3600:
+                    shutil.rmtree(Path(job["job_dir"]), ignore_errors=True)
+                    JOBS.pop(job_id, None)
+
+# ----------------------------------------------------------------------------------------------------------------------
+# worker + cleaner startup
+# ----------------------------------------------------------------------------------------------------------------------
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    WORKER_THREAD = threading.Thread(target=job_worker, daemon=True)
+    WORKER_THREAD.start()
+
+    CLEANER_THREAD = threading.Thread(target=delete_old_jobs_periodically, daemon=True)
+    CLEANER_THREAD.start()
+
+    yield
 
 # ----------------------------------------------------------------------------------------------------------------------
 # fastapi
 # ----------------------------------------------------------------------------------------------------------------------
 
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
