@@ -166,10 +166,13 @@ def run_pipeline(
     # export data
     # ==================================================================================================================
 
-    file_extension = "gpkg" if output_format == "GPKG" else "geojson"
-    driver = "GPKG" if output_format == "GPKG" else "GeoJSON"
+    file_extension_map = {"GPKG": "gpkg", "GeoJSON": "geojson"}
+    file_extension = file_extension_map[output_format]
 
     print("export data")
+    driver_map = {"GPKG": "GPKG", "GeoJSON": "GeoJSON"}
+    driver = driver_map[output_format]
+
     od_points_a = job_dir / f"od_points_a.{file_extension}"
     od_points_b = job_dir / f"od_points_b.{file_extension}"
     od_edges = job_dir / f"od_edges.{file_extension}"
