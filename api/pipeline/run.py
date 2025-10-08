@@ -6,7 +6,7 @@ from typing import Optional, Dict
 import geopandas as gpd
 import pandas as pd
 
-from api.paths import BASE_JOBS_DIR, NETASCORE_DIR, NETASCORE_SETTINGS_TEMPLATE
+from api.paths import BASE_JOBS_DIR, NETASCORE_DIR, NETASCORE_PROFILE_BIKE, NETASCORE_PROFILE_WALK, NETASCORE_SETTINGS_TEMPLATE
 from api.pipeline.steps.build_graphs import build_graphs
 from api.pipeline.steps.disaggregate_data import distribute_points_in_raster, disaggregate_table_to_edges
 from api.pipeline.steps.evaluate_stops import evaluate_stops
@@ -97,8 +97,8 @@ def run_pipeline(
         netascore_data_dir = NETASCORE_DIR / "data"
         netascore_data_dir.mkdir(parents=True, exist_ok=True)
 
-        shutil.copy(NETASCORE_DIR / "examples" / "profile_bike.yml", netascore_data_dir / "profile_bike.yml")
-        shutil.copy(NETASCORE_DIR / "examples" / "profile_walk.yml", netascore_data_dir / "profile_walk.yml")
+        shutil.copy(NETASCORE_PROFILE_BIKE, netascore_data_dir / "profile_bike.yml")
+        shutil.copy(NETASCORE_PROFILE_WALK, netascore_data_dir / "profile_walk.yml")
 
         case_id = "default_case"
         netascore_settings = netascore_data_dir / "settings.yml"
