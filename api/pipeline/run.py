@@ -204,12 +204,15 @@ def run_pipeline(
     return outputs
 
 
+TEST_DATA_DIR = Path(__file__).resolve().parents[2] / "tests" / "data"
+
+
 def main():
     run_pipeline(
-        od_clusters_a=Path("../../data/b_klynger.gpkg"),
-        od_clusters_b=Path("../../data/a_klynger.gpkg"),
-        od_table=Path("../../data/Data_2023_0099_Tabel_1.csv"),
-        stops=Path("../../data/dynlayer.gpkg"),
+        od_clusters_a=TEST_DATA_DIR / "b_klynger.gpkg",
+        od_clusters_b=TEST_DATA_DIR / "a_klynger.gpkg",
+        od_table=TEST_DATA_DIR / "Data_2023_0099_Tabel_1.csv",
+        stops=TEST_DATA_DIR / "dynlayer.gpkg",
         od_clusters_a_id_field="klynge_id",
         od_clusters_a_count_field="Beboere",
         od_clusters_b_id_field="klynge_id",
@@ -217,7 +220,7 @@ def main():
         od_table_a_id_field="Bopael_klynge_id",
         od_table_b_id_field="Arbejssted_klynge_id",
         od_table_trips_field="Antal",
-        # netascore_gpkg=Path("../../data/netascore_20250908_181654.gpkg"),
+        # netascore_gpkg=TEST_DATA_DIR / "netascore_20250908_181654.gpkg",
         output_format="GPKG",
         seed=None,
     )
