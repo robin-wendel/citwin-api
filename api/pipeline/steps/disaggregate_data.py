@@ -133,7 +133,7 @@ def disaggregate_table_to_edges(
         # cap by remaining availability in both pools
         k = min(trips, len(pool_a), len(pool_b))
         if k < trips:
-            logger.warning(f"reducing trips {trips}->{k} for {cluster_a_id}->{cluster_b_id} due to remaining availability")
+            logger.warning(f"– reducing trips {trips}->{k} for {cluster_a_id}->{cluster_b_id} due to remaining availability")
         if k == 0:
             continue
 

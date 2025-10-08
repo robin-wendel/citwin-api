@@ -18,4 +18,5 @@ class Settings(BaseSettings):
             Path(__file__).resolve().parents[1] / ".env.local",
         ]
 
+
 settings = Settings()

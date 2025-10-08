@@ -20,7 +20,8 @@ curl -X POST http://localhost:8000/jobs \
   -F "od_table_a_id_field=Bopael_klynge_id" \
   -F "od_table_b_id_field=Arbejssted_klynge_id" \
   -F "od_table_trips_field=Antal" \
-  -F "netascore_gpkg=@/Users/robinwendel/Developer/mobility-lab/citwin-api/tests/data/netascore_20250930_182100.gpkg" \
+  -F "stops_id_field=stopnummer" \
+  -F "netascore_gpkg=@/Users/robinwendel/Developer/mobility-lab/citwin-api/tests/data/netascore_20251008_200432.gpkg" \
   -F "output_format=GPKG" | jq
 ```
 

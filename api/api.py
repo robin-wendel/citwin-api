@@ -45,10 +45,9 @@ def verify_api_key(request: Request):
     if not api_key or not hmac.compare_digest(api_key, API_KEY):
         raise HTTPException(status_code=401, detail="unauthorized: invalid api key")
 
-
-# ======================================================================================================================
-# Jobs + Worker
-# ======================================================================================================================
+# ----------------------------------------------------------------------------------------------------------------------
+# jobs + worker
+# ----------------------------------------------------------------------------------------------------------------------
 
 Job = Dict[str, Any]
 JOBS: Dict[str, Job] = {}
@@ -85,6 +84,7 @@ def job_worker():
                 od_table_a_id_field=job.get("od_table_a_id_field"),
                 od_table_b_id_field=job.get("od_table_b_id_field"),
                 od_table_trips_field=job.get("od_table_trips_field"),
+                stops_id_field=job.get("stops_id_field"),
 
                 netascore_gpkg=Path(job.get("netascore_gpkg")) if job.get("netascore_gpkg") else None,
                 output_format=job.get("output_format"),
@@ -109,9 +109,9 @@ def job_worker():
 WORKER_THREAD = threading.Thread(target=job_worker, daemon=True)
 WORKER_THREAD.start()
 
-# ======================================================================================================================
-# FastAPI
-# ======================================================================================================================
+# ----------------------------------------------------------------------------------------------------------------------
+# fastapi
+# ----------------------------------------------------------------------------------------------------------------------
 
 app = FastAPI()
 app.add_middleware(GZipMiddleware, minimum_size=1000)
@@ -131,6 +131,7 @@ async def create_job(
         od_table_a_id_field: str = Form(..., description="id field for origin clusters in origin-destination table", examples=["Bopael_klynge_id"]),
         od_table_b_id_field: str = Form(..., description="id field for destination clusters in origin-destination table", examples=["Arbejde_klynge_id"]),
         od_table_trips_field: str = Form(..., description="trips field in origin-destination table", examples=["Antal"]),
+        stops_id_field: str = Form(..., description="id field for public transport stops", examples=["stopnummer"]),
 
         netascore_gpkg: Optional[UploadFile] = File(None, description="pre-generated netascore file"),
         output_format: Optional[OutputFormat] = Form(OutputFormat.geojson, description="output format"),
@@ -175,6 +176,7 @@ async def create_job(
         "od_table_a_id_field": od_table_a_id_field,
         "od_table_b_id_field": od_table_b_id_field,
         "od_table_trips_field": od_table_trips_field,
+        "stops_id_field": stops_id_field,
 
         "netascore_gpkg": str(netascore_gpkg_path) if netascore_gpkg_path else None,
         "output_format": output_format,

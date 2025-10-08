@@ -20,7 +20,8 @@ def main():
         od_table_a_id_field="Bopael_klynge_id",
         od_table_b_id_field="Arbejssted_klynge_id",
         od_table_trips_field="Antal",
-        netascore_gpkg=TEST_DATA_DIR / "netascore_20250908_181654.gpkg",
+        stops_id_field="stopnummer",
+        netascore_gpkg=TEST_DATA_DIR / "netascore_20251008_200432.gpkg",
         output_format="GPKG",
         seed=None,
     )
