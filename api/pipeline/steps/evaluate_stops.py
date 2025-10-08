@@ -1,7 +1,12 @@
+import logging
 import geopandas as gpd
 import networkx as nx
 import pandas as pd
 from shapely.ops import linemerge
+
+
+logger = logging.getLogger(__name__)
+
 
 def compute_path_geometry(G, path):
     lines = []
@@ -26,7 +31,7 @@ def compute_path_index_average(G, path, index_ft='index_bike_ft', index_tf='inde
             length = d.get('length', 0)
             index_value = d.get(index_tf)
         else:
-            print("warning: no edge between {} and {}".format(u, v))
+            logger.warning(f"no edge between {u} and {v}")
             continue
 
         if index_value is not None:

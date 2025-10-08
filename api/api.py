@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 
 from api.config import settings
 from api.paths import JOBS_DIR
-from api.pipeline.run import run_pipeline
+from api.pipeline.run import setup_logging, run_pipeline
 
 
 class CreateJobResponse(BaseModel):
@@ -29,6 +29,8 @@ class OutputFormat(str, Enum):
 
 
 API_KEY = settings.api_key
+
+setup_logging()
 
 
 def verify_api_key(request: Request):

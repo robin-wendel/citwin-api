@@ -1,3 +1,4 @@
+import logging
 import shutil
 import uuid
 from pathlib import Path
@@ -14,6 +15,24 @@ from api.pipeline.steps.filter_network import add_network_distance
 from api.pipeline.steps.handle_data import ensure_wgs84, compute_bbox_str, get_utm_srid
 from api.pipeline.steps.netascore import update_settings, run_netascore
 from api.pipeline.steps.snap_points import build_balltree, snap_with_balltree
+
+
+logger = logging.getLogger(__name__)
+
+
+def setup_logging():
+    root = logging.getLogger()
+    if root.hasHandlers():
+        return
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s]: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+    for noisy in ["pyogrio"]:
+        logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
 def run_pipeline(
@@ -41,7 +60,7 @@ def run_pipeline(
         job_dir = (JOBS_DIR / job_id)
     else:
         job_id = job_dir.name
-    print("job_id:", job_id)
+    logger.info(f"job_id: {job_id}")
     job_dir.mkdir(parents=True, exist_ok=True)
 
     if output_format not in {"GPKG", "GeoJSON"}:
@@ -51,24 +70,24 @@ def run_pipeline(
     # import data
     # ==================================================================================================================
 
-    print("import data")
+    logger.info("import data")
     od_clusters_a_gdf = ensure_wgs84(gpd.read_file(od_clusters_a))
     od_clusters_b_gdf = ensure_wgs84(gpd.read_file(od_clusters_b))
     od_table_df = pd.read_csv(od_table, delimiter=';')
     stops_gdf = ensure_wgs84(gpd.read_file(stops))
 
     target_srid = get_utm_srid(stops_gdf)
-    print("  target_srid:", target_srid)
+    logger.info(f"  target_srid: {target_srid}")
     stops_buffer_gdf = stops_gdf.to_crs(epsg=target_srid).geometry.buffer(7500).to_crs(epsg=4326)
     bbox_str = compute_bbox_str(stops_buffer_gdf)
-    print("  bbox_str:", bbox_str)
+    logger.info(f"  bbox_str: {bbox_str}")
 
     # ==================================================================================================================
     # filter data
     # ==================================================================================================================
 
-    print("filter data")
-    print("  filter clusters by stops buffer")
+    logger.info("filter data")
+    logger.info("  filter clusters by stops buffer")
     mask_a = od_clusters_a_gdf.geometry.intersects(stops_buffer_gdf.union_all())
     od_clusters_a_gdf = od_clusters_a_gdf[mask_a]
     mask_b = od_clusters_b_gdf.geometry.intersects(stops_buffer_gdf.union_all())
@@ -78,11 +97,11 @@ def run_pipeline(
     # disaggregate data
     # ==================================================================================================================
 
-    print("disaggregate data")
-    print("  distribute points in clusters")
+    logger.info("disaggregate data")
+    logger.info("  distribute points in clusters")
     od_points_a_gdf = distribute_points_in_raster(od_clusters_a_gdf, od_clusters_a_id_field, od_clusters_a_count_field, seed)
     od_points_b_gdf = distribute_points_in_raster(od_clusters_b_gdf, od_clusters_b_id_field, od_clusters_b_count_field, seed)
-    print("  disaggregate table to edges")
+    logger.info("  disaggregate table to edges")
     od_edges_gdf = disaggregate_table_to_edges(od_points_a_gdf, od_points_b_gdf, od_table_df, od_table_a_id_field, od_table_b_id_field, od_table_trips_field, seed)
 
     # ==================================================================================================================
@@ -92,8 +111,8 @@ def run_pipeline(
     generated_netascore = False
 
     if netascore_gpkg is None:
-        print("netascore")
-        print("  update settings")
+        logger.info("netascore")
+        logger.info("  update settings")
         netascore_data_dir = NETASCORE_DIR / "data"
         netascore_data_dir.mkdir(parents=True, exist_ok=True)
 
@@ -103,8 +122,8 @@ def run_pipeline(
         case_id = "default_case"
         update_settings(NETASCORE_SETTINGS, netascore_data_dir / "settings.yml", target_srid, bbox_str, case_id)
 
-        print("  run netascore")
-        run_netascore(NETASCORE_DIR, netascore_settings)
+        logger.info("  run netascore")
+        run_netascore(NETASCORE_DIR, netascore_data_dir / "settings.yml")
         netascore_gpkg_tmp = netascore_data_dir / f"netascore_{case_id}.gpkg"
         netascore_gpkg = job_dir / "netascore.gpkg"
         shutil.copy(netascore_gpkg_tmp, netascore_gpkg)
@@ -119,7 +138,7 @@ def run_pipeline(
     # build graphs
     # ==================================================================================================================
 
-    print("build graphs")
+    logger.info("build graphs")
     # cache_dir = Path(__file__).resolve().parents[1] / "jobs" / "cache"
     G_base, G_base_reversed, G_quality, G_quality_reversed = build_graphs(netascore_edges_gdf, netascore_nodes_gdf)
 
@@ -127,12 +146,12 @@ def run_pipeline(
     # snap points
     # ==================================================================================================================
 
-    print("snap points")
-    print("  building balltree on graph nodes")
+    logger.info("snap points")
+    logger.info("  building balltree on graph nodes")
     balltree_base, node_ids_base = build_balltree(G_base)
     balltree_quality, node_ids_quality = build_balltree(G_quality)
 
-    print("  snapping points to graph nodes")
+    logger.info("  snapping points to graph nodes")
     od_points_a_gdf = snap_with_balltree(od_points_a_gdf, balltree_base, node_ids_base)
     od_points_b_gdf = snap_with_balltree(od_points_b_gdf, balltree_base, node_ids_base)
     stops_gdf = snap_with_balltree(stops_gdf, balltree_base, node_ids_base, node_id_field="node_id_base")
@@ -142,11 +161,11 @@ def run_pipeline(
     # filter network
     # ==================================================================================================================
 
-    print("filter network")
-    print("  add network distance")
+    logger.info("filter network")
+    logger.info("  add network distance")
     od_edges_gdf = add_network_distance(od_edges_gdf, od_points_a_gdf, od_points_b_gdf, G_base)
 
-    print("  remove edges and points with distance <= 3250 m")
+    logger.info("  remove edges and points with distance <= 3250 m")
     od_edges_gdf = od_edges_gdf[od_edges_gdf['distance'] > 3250]
 
     valid_a_ids = od_edges_gdf['point_a_id'].unique()
@@ -159,7 +178,7 @@ def run_pipeline(
     # evaluate stops
     # ==================================================================================================================
 
-    print("evaluate stops")
+    logger.info("evaluate stops")
     edges_base_gdf, edges_quality_gdf, routes_base_gdf, routes_quality_gdf, stops_gdf, households_gdf = evaluate_stops(netascore_edges_gdf, stops_gdf, od_points_a_gdf, G_base, G_quality, G_base_reversed, G_quality_reversed)
 
     # ==================================================================================================================
@@ -169,10 +188,10 @@ def run_pipeline(
     file_extension_map = {"GPKG": "gpkg", "GeoJSON": "geojson"}
     file_extension = file_extension_map[output_format]
 
-    print("export data")
     driver_map = {"GPKG": "GPKG", "GeoJSON": "GeoJSON"}
     driver = driver_map[output_format]
 
+    logger.info("export data")
     od_points_a = job_dir / f"od_points_a.{file_extension}"
     od_points_b = job_dir / f"od_points_b.{file_extension}"
     od_edges = job_dir / f"od_edges.{file_extension}"
@@ -201,6 +220,6 @@ def run_pipeline(
     if generated_netascore:
         outputs["netascore_gpkg"] = netascore_gpkg
 
-    print("done")
+    logger.info("done")
 
     return outputs
