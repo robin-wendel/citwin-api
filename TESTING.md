@@ -59,6 +59,7 @@ curl -X POST https://mobilitylab.geo.sbg.ac.at/api/citwin/jobs \
   -F "od_table_a_id_field=Bopael_klynge_id" \
   -F "od_table_b_id_field=Arbejssted_klynge_id" \
   -F "od_table_trips_field=Antal" \
+  -F "stops_id_field=stopnummer" \
   -F "output_format=GPKG" | jq
 ```
 
