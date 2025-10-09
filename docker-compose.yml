@@ -1,20 +1,17 @@
 services:
   api:
     build: .
+    container_name: ${PROJECT_NAME}
     restart: unless-stopped
     env_file:
       - .env.docker
     depends_on:
       netascore-db:
         condition: service_healthy
+    environment:
+      - API_ROOT_PATH=${API_ROOT_PATH}
     ports:
-      - "${API_PORT:-8000}:8000"
-    command: >
-      uvicorn api.app:app
-      --host 0.0.0.0
-      --port 8000
-      --workers 1
-      --root-path ${API_ROOT_PATH:-}
+      - "${API_PORT}:8000"
     stdin_open: true   # for interactive debugging (docker run -i)
     tty: true          # for pseudo-terminal (docker run -t)
 
