@@ -15,6 +15,7 @@ if [[ "$ENVIRONMENT" == "prod" ]]; then
   GIT_BRANCH="dev"
   PROJECT_NAME="citwin-api-prod"
   PROJECT_DIR="/opt/citwin-api-prod"
+  API_KEY="59c65fda55209fffb2cdcdb3a374a47f15032cfee26090cbeacf6c8f032f5b1a"
   API_PORT=8001
   API_ROOT_PATH="/api/citwin-prod"
   NGINX_CONF="nginx/prod.conf"
@@ -22,6 +23,7 @@ elif [[ "$ENVIRONMENT" == "staging" ]]; then
   GIT_BRANCH="dev"
   PROJECT_NAME="citwin-api-staging"
   PROJECT_DIR="/opt/citwin-api-staging"
+  API_KEY="59c65fda55209fffb2cdcdb3a374a47f15032cfee26090cbeacf6c8f032f5b1a"
   API_PORT=9001
   API_ROOT_PATH="/api/citwin-staging"
   NGINX_CONF="nginx/staging.conf"
@@ -31,6 +33,11 @@ else
 fi
 
 echo "□ deploy: $ENVIRONMENT"
+
+echo "– preparing .env.docker"
+export API_KEY API_PORT API_ROOT_PATH
+envsubst < .env.docker.example > .env.docker
+scp .env.docker $SERVER:/opt/$PROJECT_NAME/.env.docker
 
 ssh $SERVER bash << EOF
 set -e
