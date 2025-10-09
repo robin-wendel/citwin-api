@@ -34,11 +34,6 @@ fi
 
 echo "□ deploy: $ENVIRONMENT"
 
-echo "– creating .env.docker"
-export API_KEY API_PORT API_ROOT_PATH
-envsubst < .env.docker.example > .env.docker
-scp .env.docker $SERVER:/opt/$PROJECT_NAME/.env.docker
-
 ssh $SERVER bash << EOF
 set -e
 
@@ -52,6 +47,15 @@ else
   git checkout $GIT_BRANCH
   git pull origin $GIT_BRANCH
 fi
+EOF
+
+echo "– creating .env.docker"
+export API_KEY API_PORT API_ROOT_PATH
+envsubst < .env.docker.example > .env.docker
+scp .env.docker $SERVER:/opt/$PROJECT_NAME/.env.docker
+
+ssh $SERVER bash << EOF
+set -e
 
 cd $PROJECT_DIR
 
