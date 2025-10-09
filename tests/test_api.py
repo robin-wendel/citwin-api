@@ -7,14 +7,17 @@ import requests
 parser = argparse.ArgumentParser()
 parser.add_argument("--base-url", default="http://localhost:8000")
 parser.add_argument("--api-key", required=True)
+parser.add_argument("--upload-netascore", action="store_true")
 parser.add_argument("--no-download", action="store_true")
 args = parser.parse_args()
 
 BASE_URL = args.base_url
 API_KEY = args.api_key
+UPLOAD_NETASCORE = args.upload_netascore
 DOWNLOAD_FILES = not args.no_download
 
 print(f"– base url: {BASE_URL}")
+print(f"– upload netascore: {UPLOAD_NETASCORE}")
 print(f"– download files: {DOWNLOAD_FILES}")
 
 DATA_DIR = Path(__file__).parents[0] / "data"
@@ -30,8 +33,10 @@ def main():
         "od_clusters_b": open(DATA_DIR / "a_klynger.gpkg", "rb"),
         "od_table": open(DATA_DIR / "Data_2023_0099_Tabel_1.csv", "rb"),
         "stops": open(DATA_DIR / "dynlayer.gpkg", "rb"),
-        "netascore_gpkg": open(DATA_DIR / "netascore_20251008_200432.gpkg", "rb"),
     }
+
+    if UPLOAD_NETASCORE:
+        files["netascore_gpkg"] = open(DATA_DIR / "netascore_20251008_200432.gpkg", "rb")
 
     data = {
         "od_clusters_a_id_field": "klynge_id",
