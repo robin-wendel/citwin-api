@@ -1,21 +1,9 @@
 # Docker
 
-```bash
-docker build -t citwin-api .
-```
+## Docker Compose
 
 ```bash
-docker run -d -p 8000:8000 --name citwin-api citwin-api
-```
-
-```bash
-docker stop citwin-api
-docker rm citwin-api
-```
-
-# Docker Compose
-
-```bash
+export API_PORT=8001
 docker compose up --build api
 ```
 
@@ -23,7 +11,7 @@ docker compose up --build api
 docker compose down
 ```
 
-# Cleanup
+## Cleanup
 
 ```bash
 docker builder prune -a -f
