@@ -167,7 +167,7 @@ async def create_job(
         od_clusters_b_id_field: str = Form(..., description="id field for destination clusters", examples=["klynge_id"]),
         od_clusters_b_count_field: str = Form(..., description="count field for destination clusters", examples=["Arbejdere"]),
         od_table_a_id_field: str = Form(..., description="id field for origin clusters in origin-destination table", examples=["Bopael_klynge_id"]),
-        od_table_b_id_field: str = Form(..., description="id field for destination clusters in origin-destination table", examples=["Arbejde_klynge_id"]),
+        od_table_b_id_field: str = Form(..., description="id field for destination clusters in origin-destination table", examples=["Arbejssted_klynge_id"]),
         od_table_trips_field: str = Form(..., description="trips field in origin-destination table", examples=["Antal"]),
         stops_id_field: str = Form(..., description="id field for public transport stops", examples=["stopnummer"]),
 
