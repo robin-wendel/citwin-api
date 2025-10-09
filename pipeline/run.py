@@ -16,7 +16,7 @@ from pipeline.steps.disaggregate_data import distribute_points_in_raster, disagg
 from pipeline.steps.evaluate_stops import evaluate_accessibility
 from pipeline.steps.filter_network import add_network_distance
 from pipeline.steps.handle_data import calculate_distance, ensure_wgs84, get_utm_srid, compute_bbox_str, filter_gdf
-from pipeline.steps.prepare_netascore import update_settings, run_netascore
+from pipeline.steps.generate_netascore import update_settings, run_netascore
 from pipeline.steps.snap_points import build_balltree, snap_with_balltree
 
 DISTANCE_THRESHOLD = calculate_distance(15, 15)
@@ -131,7 +131,7 @@ def disaggregate_data(ctx, fields):
 
 
 @step
-def prepare_netascore(ctx):
+def generate_netascore(ctx):
     if ctx.netascore_gpkg is None:
         case_id = "default_case"
         netascore_data_dir = NETASCORE_DIR / "data"
@@ -289,7 +289,7 @@ def run_pipeline(
 
     handle_data(ctx, od_clusters_a, od_clusters_b, od_table, stops)
     disaggregate_data(ctx, fields)
-    prepare_netascore(ctx)
+    generate_netascore(ctx)
     build_graphs(ctx)
     snap_points(ctx)
     filter_network(ctx)

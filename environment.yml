@@ -7,17 +7,19 @@ dependencies:
 
   # api
   - fastapi
+  - pydantic
+  - pydantic-settings
+  - python-multipart
+  - uvicorn
+
+  # pipeline
   - geopandas
   - networkx
   - numpy
   - pandas
-  - pydantic
-  - pydantic-settings
-  - python-multipart
   - pyyaml
   - scikit-learn
   - shapely
-  - uvicorn
 
   # netascore
   - gdal=3.10.3
