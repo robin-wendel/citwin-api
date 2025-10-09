@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from api.api import delete_old_jobs
+from api.app import delete_old_jobs
 from api.pipeline.run import setup_logging, run_pipeline
 
 TEST_DATA_DIR = Path(__file__).resolve().parents[0] / "data"

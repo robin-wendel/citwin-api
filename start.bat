@@ -13,4 +13,4 @@ rem change to app directory
 cd /d "%~dp0"
 
 rem start uvicorn server
-python -m uvicorn api.api:app --host localhost --port "%API_PORT%" --root-path "%API_ROOT_PATH%" --workers 1
+python -m uvicorn api.app:app --host localhost --port "%API_PORT%" --root-path "%API_ROOT_PATH%" --workers 1
