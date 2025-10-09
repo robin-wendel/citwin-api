@@ -14,7 +14,7 @@ services:
       --host 0.0.0.0
       --port 8000
       --workers 1
-      --root-path ${API_ROOT_PATH}
+      --root-path ${API_ROOT_PATH:-}
     stdin_open: true   # for interactive debugging (docker run -i)
     tty: true          # for pseudo-terminal (docker run -t)
 

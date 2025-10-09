@@ -10,6 +10,7 @@ setup_logging()
 
 def main():
     delete_old_jobs()
+
     run_pipeline(
         od_clusters_a=TEST_DATA_DIR / "b_klynger.gpkg",
         od_clusters_b=TEST_DATA_DIR / "a_klynger.gpkg",
