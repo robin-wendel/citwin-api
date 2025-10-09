@@ -34,7 +34,7 @@ fi
 
 echo "□ deploy: $ENVIRONMENT"
 
-echo "– preparing .env.docker"
+echo "– creating .env.docker"
 export API_KEY API_PORT API_ROOT_PATH
 envsubst < .env.docker.example > .env.docker
 scp .env.docker $SERVER:/opt/$PROJECT_NAME/.env.docker

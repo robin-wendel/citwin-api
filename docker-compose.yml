@@ -2,6 +2,7 @@ services:
   api:
     build: .
     container_name: ${PROJECT_NAME}
+    command: uvicorn api.app:app --host 0.0.0.0 --port 8000 --root-path ${API_ROOT_PATH}
     restart: unless-stopped
     env_file:
       - .env.docker
