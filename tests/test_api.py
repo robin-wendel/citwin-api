@@ -57,12 +57,14 @@ def main():
 
     # get job status
     while True:
-        status = requests.get(f"{BASE_URL}/jobs/{job_id}", headers=headers).json().get("status")
+        response = requests.get(f"{BASE_URL}/jobs/{job_id}", headers=headers).json()
+        status = response.get("status")
         print(f"– status: {status}")
         if status == "done":
             break
         if status == "failed":
-            raise RuntimeError(f"– status: {status}")
+            error = response.get("error")
+            raise RuntimeError(f"– status: {status}, error: {error}")
         time.sleep(5)
 
     # list downloads
