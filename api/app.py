@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 
 from api.config import settings
 from api.paths import JOBS_DIR
-from api.pipeline.run import setup_logging, run_pipeline
+from pipeline.run import run_pipeline, setup_logging
 
 
 class CreateJobResponse(BaseModel):

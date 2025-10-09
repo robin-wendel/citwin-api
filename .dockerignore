@@ -9,8 +9,8 @@
 .env.*
 environment.yml
 
-tests/data/
 jobs/
+tests/
 
 *.ps1
 *.bat

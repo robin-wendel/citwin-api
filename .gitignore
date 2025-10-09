@@ -8,7 +8,7 @@
 .env.*
 !.env.*.example
 
-tests/data/
 jobs/
+tests/data/
 
 NOTES.md
