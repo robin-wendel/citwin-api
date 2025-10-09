@@ -13,4 +13,4 @@ source /opt/miniconda3/bin/activate "$CONDA_ENV"
 cd "$(dirname "$0")" || exit
 
 # start uvicorn server
-python -m uvicorn api.api:app --host localhost --port "$API_PORT" --root-path "$API_ROOT_PATH" --workers 1
+python -m uvicorn api.app:app --host localhost --port "$API_PORT" --root-path "$API_ROOT_PATH" --workers 1
