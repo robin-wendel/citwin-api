@@ -1,5 +1,4 @@
 import hmac
-import os
 import queue
 import shutil
 import threading
@@ -152,7 +151,7 @@ async def lifespan(_app: FastAPI):
 # fastapi
 # ----------------------------------------------------------------------------------------------------------------------
 
-app = FastAPI(root_path=settings.api_root_path, lifespan=lifespan)
+app = FastAPI(title="CITWIN API", root_path=settings.api_root_path, lifespan=lifespan)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
