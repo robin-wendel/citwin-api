@@ -151,7 +151,7 @@ async def lifespan(_app: FastAPI):
 # fastapi
 # ----------------------------------------------------------------------------------------------------------------------
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(root_path=os.getenv("API_ROOT_PATH", "/"), lifespan=lifespan)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 

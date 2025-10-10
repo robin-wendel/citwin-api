@@ -1,27 +1,36 @@
 #!/usr/bin/env bash
 set -e
 
-SERVER="adm_b1003527@zgis228.geo.sbg.ac.at"
-
 ENVIRONMENT=$1
-
 if [[ -z "$ENVIRONMENT" ]]; then
-  echo "Usage: ./undeploy.sh [staging|prod]"
+  echo "Usage: ./undeploy.sh [environment]"
+  echo "Example: ./undeploy.sh prod"
   exit 1
 fi
 
-if [[ "$ENVIRONMENT" == "prod" ]]; then
-  PROJECT_NAME="citwin-api-prod"
-  PROJECT_DIR="/opt/citwin-api-prod"
-elif [[ "$ENVIRONMENT" == "staging" ]]; then
-  PROJECT_NAME="citwin-api-staging"
-  PROJECT_DIR="/opt/citwin-api-staging"
-else
-  echo "Unknown environment: $ENVIRONMENT"
+# loading environment file
+ENV_FILE=".env.deploy.$ENVIRONMENT"
+if [[ ! -f "$ENV_FILE" ]]; then
+  echo "– environment file $ENV_FILE not found"
   exit 1
 fi
 
-echo "□ undeploy: $ENVIRONMENT"
+# loading environment configuration
+set -a
+source "$ENV_FILE"
+set +a
+
+
+# ensuring required variables exist
+REQUIRED=("SERVER" "PROJECT_NAME" "PROJECT_DIR" "API_PORT" "API_ROOT_PATH")
+for VAR in "${REQUIRED[@]}"; do
+  if [[ -z "${!VAR}" ]]; then
+    echo "– missing required variable: $VAR"
+    exit 1
+  fi
+done
+
+echo "□ undeploying $PROJECT_NAME from $SERVER using $ENV_FILE"
 
 ssh $SERVER bash << EOF
 set -e
@@ -30,6 +39,9 @@ set -e
 if [ -d "$PROJECT_DIR" ]; then
   echo "- stopping docker containers: $PROJECT_DIR"
   cd $PROJECT_DIR
+  export PROJECT_NAME="$PROJECT_NAME"
+  export API_PORT="$API_PORT"
+  export API_ROOT_PATH=$API_ROOT_PATH
   docker compose down || true
 
   echo "- removing project directory: $PROJECT_DIR"
@@ -45,4 +57,4 @@ sudo systemctl reload nginx
 
 EOF
 
-echo "■ undeploy: $ENVIRONMENT"
+echo "■ undeploying $PROJECT_NAME from $SERVER using $ENV_FILE"

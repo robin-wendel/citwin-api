@@ -1,20 +1,19 @@
 services:
   api:
     build: .
-    container_name: ${PROJECT_NAME}
-    command: uvicorn api.app:app --host 0.0.0.0 --port 8000 --root-path ${API_ROOT_PATH}
+    container_name: "${PROJECT_NAME:-citwin-api}"
     restart: unless-stopped
     env_file:
       - .env.docker
+    environment:
+      - "API_ROOT_PATH=${API_ROOT_PATH:-/}"
     depends_on:
       netascore-db:
         condition: service_healthy
-    environment:
-      - API_ROOT_PATH=${API_ROOT_PATH}
     ports:
-      - "${API_PORT}:8000"
-    stdin_open: true   # for interactive debugging (docker run -i)
-    tty: true          # for pseudo-terminal (docker run -t)
+      - "${API_PORT:-8000}:8000"
+    stdin_open: true
+    tty: true
 
   netascore-db:
     image: postgis/postgis:17-3.4
@@ -23,8 +22,8 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=postgres
-    ports:
-      - "5433:5432"
+    expose:
+      - 5432
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s

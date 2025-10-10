@@ -1,77 +1,74 @@
 #!/usr/bin/env bash
 set -e
 
-SERVER="adm_b1003527@zgis228.geo.sbg.ac.at"
-REPO_URL="https://github.com/robin-wendel/citwin-api.git"
-
 ENVIRONMENT=$1
-
 if [[ -z "$ENVIRONMENT" ]]; then
-  echo "Usage: ./deploy.sh [staging|prod]"
+  echo "Usage: ./deploy.sh [environment]"
+  echo "Example: ./deploy.sh prod"
   exit 1
 fi
 
-if [[ "$ENVIRONMENT" == "prod" ]]; then
-  GIT_BRANCH="dev"
-  PROJECT_NAME="citwin-api-prod"
-  PROJECT_DIR="/opt/citwin-api-prod"
-  API_KEY="59c65fda55209fffb2cdcdb3a374a47f15032cfee26090cbeacf6c8f032f5b1a"
-  API_PORT=8001
-  API_ROOT_PATH="/api/citwin-prod"
-  NGINX_CONF="nginx/prod.conf"
-elif [[ "$ENVIRONMENT" == "staging" ]]; then
-  GIT_BRANCH="dev"
-  PROJECT_NAME="citwin-api-staging"
-  PROJECT_DIR="/opt/citwin-api-staging"
-  API_KEY="59c65fda55209fffb2cdcdb3a374a47f15032cfee26090cbeacf6c8f032f5b1a"
-  API_PORT=9001
-  API_ROOT_PATH="/api/citwin-staging"
-  NGINX_CONF="nginx/staging.conf"
-else
-  echo "Unknown environment: $ENVIRONMENT"
+# loading environment file
+ENV_FILE=".env.deploy.$ENVIRONMENT"
+if [[ ! -f "$ENV_FILE" ]]; then
+  echo "– environment file $ENV_FILE not found"
   exit 1
 fi
 
-echo "□ deploy: $ENVIRONMENT"
+# loading environment configuration
+set -a
+source "$ENV_FILE"
+set +a
 
-ssh $SERVER bash << EOF
+
+# ensuring required variables exist
+REQUIRED=("SERVER" "PROJECT_NAME" "PROJECT_DIR" "GIT_REPO_URL" "GIT_BRANCH"  "API_PORT" "NGINX_CONF" "NGINX_DOMAIN")
+for VAR in "${REQUIRED[@]}"; do
+  if [[ -z "${!VAR}" ]]; then
+    echo "– missing required variable: $VAR"
+    exit 1
+  fi
+done
+
+echo "□ deploying $PROJECT_NAME to $SERVER using $ENV_FILE"
+
+ssh "$SERVER" bash << EOF
 set -e
 
+# git
 if [ ! -d "$PROJECT_DIR/.git" ]; then
   echo "– cloning branch: $GIT_BRANCH"
-  git clone -b $GIT_BRANCH $REPO_URL $PROJECT_DIR
+  git clone -b "$GIT_BRANCH" "$GIT_REPO_URL" "$PROJECT_DIR"
 else
   echo "– pulling branch: $GIT_BRANCH"
-  cd $PROJECT_DIR
+  cd "$PROJECT_DIR"
   git fetch origin
-  git checkout $GIT_BRANCH
-  git pull origin $GIT_BRANCH
+  git checkout "$GIT_BRANCH"
+  git pull origin "$GIT_BRANCH"
 fi
 EOF
 
-echo "– creating .env.docker"
-export API_KEY API_PORT API_ROOT_PATH
-envsubst < .env.docker.example > .env.docker
-scp .env.docker $SERVER:/opt/$PROJECT_NAME/.env.docker
+echo "– uploading env for docker"
+scp .env.docker "$SERVER:$PROJECT_DIR/.env.docker"
 
-ssh $SERVER bash << EOF
+ssh "$SERVER" bash << EOF
 set -e
-
-cd $PROJECT_DIR
+cd "$PROJECT_DIR"
 
 # nginx
 echo "– configuring nginx: $PROJECT_NAME"
-sudo cp $NGINX_CONF /etc/nginx/sites-available/$PROJECT_NAME.conf
+sudo cp "$NGINX_CONF" /etc/nginx/sites-available/$PROJECT_NAME.conf
 sudo ln -sf /etc/nginx/sites-available/$PROJECT_NAME.conf /etc/nginx/sites-enabled/$PROJECT_NAME.conf
 sudo nginx -t
 sudo systemctl reload nginx
 
 # docker
 echo "– starting docker containers: $PROJECT_DIR"
-export PROJECT_NAME=$PROJECT_NAME
+export PROJECT_NAME="$PROJECT_NAME"
+export API_PORT="$API_PORT"
 export API_ROOT_PATH=$API_ROOT_PATH
-export API_PORT=$API_PORT
+docker compose down || true
 docker compose up -d --build
 EOF
 
-echo "■ deploy: $ENVIRONMENT"
+echo "■ deploy: $PROJECT_NAME to $SERVER using $ENV_FILE"
