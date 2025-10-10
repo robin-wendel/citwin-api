@@ -50,10 +50,12 @@ fi
 
 # nginx
 echo "- unconfiguring nginx: $PROJECT_NAME"
-sudo rm -f /etc/nginx/sites-enabled/$PROJECT_NAME.conf
-sudo rm -f /etc/nginx/sites-available/$PROJECT_NAME.conf
-sudo nginx -t
-sudo systemctl reload nginx
+sudo rm -f "/etc/nginx/conf.d/apps-enabled/$PROJECT_NAME.conf"
+if sudo nginx -t; then
+  sudo systemctl reload nginx
+else
+  echo "- nginx config test failed, not reloading"
+fi
 
 EOF
 
