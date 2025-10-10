@@ -6,10 +6,12 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     api_key: str
     db_host: str
-    db_port: int = 5432
+    db_port: int
     db_name: str
     db_username: str
     db_password: str
+
+    api_root_path: str = "/"
 
     class Config:
         env_file = [

@@ -3,7 +3,6 @@
 ## Docker Compose
 
 ```bash
-export API_PORT=8001
 docker compose up --build api
 ```
 
