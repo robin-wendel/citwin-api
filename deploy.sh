@@ -22,7 +22,7 @@ set +a
 
 
 # ensuring required variables exist
-REQUIRED=("SERVER" "PROJECT_NAME" "PROJECT_DIR" "GIT_REPO_URL" "GIT_BRANCH"  "API_PORT" "NGINX_CONF" "NGINX_DOMAIN")
+REQUIRED=("SERVER" "PROJECT_NAME" "PROJECT_DIR" "GIT_REPO_URL" "GIT_BRANCH" "API_PORT" "API_ROOT_PATH")
 for VAR in "${REQUIRED[@]}"; do
   if [[ -z "${!VAR}" ]]; then
     echo "– missing required variable: $VAR"
