@@ -1,18 +1,19 @@
 import argparse
+import os
 import time
 from pathlib import Path
 
 import requests
 
+from api.config import settings
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--base-url", default="http://localhost:8000")
-parser.add_argument("--api-key", required=True)
 parser.add_argument("--upload-netascore", action="store_true")
 parser.add_argument("--no-download", action="store_true")
 args = parser.parse_args()
 
 BASE_URL = args.base_url
-API_KEY = args.api_key
 UPLOAD_NETASCORE = args.upload_netascore
 DOWNLOAD_FILES = not args.no_download
 
@@ -22,6 +23,8 @@ print(f"– download files: {DOWNLOAD_FILES}")
 
 DATA_DIR = Path(__file__).parents[0] / "data"
 DOWNLOADS_DIR = Path(__file__).parents[0] / "downloads"
+
+API_KEY = settings.api_key
 
 headers = {"Authorization": f"Bearer {API_KEY}"}
 
