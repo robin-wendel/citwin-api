@@ -1,4 +1,5 @@
 import hmac
+import os
 import queue
 import shutil
 import threading
