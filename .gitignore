@@ -11,5 +11,8 @@
 jobs/
 tests/data/
 
+*.ps1
+*.bat
+
 *.md
 !README.md
