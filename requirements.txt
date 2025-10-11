@@ -1,0 +1,23 @@
+# api
+fastapi
+pydantic
+pydantic-settings
+python-multipart
+uvicorn
+
+# pipeline
+geopandas
+networkx
+numpy
+pandas
+pyyaml
+scikit-learn
+shapely
+
+# netascore
+gdal==3.10.3
+jinjasql2
+osm2geojson
+psycopg2
+pyyaml
+requests
