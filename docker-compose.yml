@@ -6,30 +6,32 @@ services:
       - .env.docker
     environment:
       - "API_ROOT_PATH=${API_ROOT_PATH:-/}"
+    ports:
+      - "${API_PORT:-8000}:8000"
     depends_on:
       netascore-db:
         condition: service_healthy
-    ports:
-      - "${API_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      start_period: 5s
     stdin_open: true
     tty: true
 
   netascore-db:
     image: postgis/postgis:17-3.4
     restart: unless-stopped
-    volumes:
-      - netascore_db_data:/var/lib/postgresql/data
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=postgres
     expose:
       - 5432
+    volumes:
+      - netascore_db_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres || exit 1"]
-      interval: 5s
-      timeout: 10s
-      retries: 10
+      start_period: 5s
+
 
 volumes:
   netascore_db_data:

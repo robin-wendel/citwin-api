@@ -84,7 +84,7 @@ cd "$DEPLOY_PATH"
 export PROJECT_NAME="$PROJECT_NAME"
 export API_PORT="$API_PORT"
 export API_ROOT_PATH=$API_ROOT_PATH
-docker compose down -v || true
+docker compose down --volumes || true
 docker compose up -d --build
 EOF
 

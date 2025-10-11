@@ -42,7 +42,7 @@ if [ -d "$DEPLOY_PATH" ]; then
   export PROJECT_NAME="$PROJECT_NAME"
   export API_PORT="$API_PORT"
   export API_ROOT_PATH=$API_ROOT_PATH
-  docker compose down -v || true
+  docker compose down --volumes || true
 
   echo "- removing project directory: $DEPLOY_PATH"
   sudo rm -rf $DEPLOY_PATH

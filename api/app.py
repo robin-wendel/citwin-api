@@ -20,6 +20,8 @@ from api.config import settings
 from api.paths import JOBS_DIR
 from pipeline.run import run_pipeline, setup_logging
 
+API_KEY = settings.api_key
+
 
 class CreateJobResponse(BaseModel):
     job_id: str = Field(..., description="unique job ID", examples=["550e8400-e29b-41d4-a716-446655440000"])
@@ -29,11 +31,6 @@ class CreateJobResponse(BaseModel):
 class OutputFormat(str, Enum):
     geojson = "GeoJSON"
     gpkg = "GPKG"
-
-
-API_KEY = settings.api_key
-
-logger = setup_logging()
 
 
 def verify_api_key(request: Request):
@@ -54,6 +51,9 @@ def check_extension(upload: UploadFile, expected: set[str]):
     if suffix not in expected:
         raise HTTPException(status_code=400, detail=f"unsupported file type: {suffix or 'none'}, allowed: {', '.join(sorted(expected))}")
     return suffix
+
+
+logger = setup_logging()
 
 # ----------------------------------------------------------------------------------------------------------------------
 # jobs + worker
@@ -160,6 +160,11 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(title="CITWIN API", version="0.9.0", root_path=settings.api_root_path, lifespan=lifespan)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
 
 
 @app.post("/jobs", response_model=CreateJobResponse, dependencies=[Depends(verify_api_key)])
