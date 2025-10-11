@@ -6,6 +6,7 @@ services:
       - .env.docker
     environment:
       - "API_ROOT_PATH=${API_ROOT_PATH:-/}"
+      - "DOCKER_ENV=true"
     ports:
       - "${API_PORT:-8000}:8000"
     depends_on:

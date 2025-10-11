@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from pydantic_settings import BaseSettings
@@ -17,7 +18,7 @@ class Settings(BaseSettings):
         env_file = [
             Path(__file__).resolve().parents[1] / ".env",
             Path(__file__).resolve().parents[1] / ".env.local",
-        ]
+        ] if not os.getenv("DOCKER_ENV") else []
 
 
 settings = Settings()
