@@ -22,7 +22,7 @@ set +a
 
 
 # ensuring required variables exist
-REQUIRED=("SERVER" "PROJECT_NAME" "PROJECT_DIR" "API_PORT" "API_ROOT_PATH")
+REQUIRED=("PROJECT_NAME" "DEPLOY_USER" "DEPLOY_PORT" "DEPLOY_HOST" "DEPLOY_PATH" "API_PORT" "API_ROOT_PATH")
 for VAR in "${REQUIRED[@]}"; do
   if [[ -z "${!VAR}" ]]; then
     echo "– missing required variable: $VAR"
@@ -30,22 +30,22 @@ for VAR in "${REQUIRED[@]}"; do
   fi
 done
 
-echo "□ undeploying $PROJECT_NAME from $SERVER using $ENV_FILE"
+echo "□ undeploying $PROJECT_NAME from $DEPLOY_HOST using $ENV_FILE"
 
-ssh $SERVER bash << EOF
+ssh -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" bash << EOF
 set -e
 
 # docker
-if [ -d "$PROJECT_DIR" ]; then
-  echo "- stopping docker containers: $PROJECT_DIR"
-  cd $PROJECT_DIR
+if [ -d "$DEPLOY_PATH" ]; then
+  echo "- stopping docker containers: $DEPLOY_PATH"
+  cd $DEPLOY_PATH
   export PROJECT_NAME="$PROJECT_NAME"
   export API_PORT="$API_PORT"
   export API_ROOT_PATH=$API_ROOT_PATH
-  docker compose down --volumes || true
+  docker compose down -v || true
 
-  echo "- removing project directory: $PROJECT_DIR"
-  sudo rm -rf $PROJECT_DIR
+  echo "- removing project directory: $DEPLOY_PATH"
+  sudo rm -rf $DEPLOY_PATH
 fi
 
 # nginx
@@ -59,4 +59,4 @@ fi
 
 EOF
 
-echo "■ undeploying $PROJECT_NAME from $SERVER using $ENV_FILE"
+echo "■ undeploying $PROJECT_NAME from $DEPLOY_HOST using $ENV_FILE"
