@@ -54,7 +54,6 @@ class PipelineContext:
     seed: Optional[int] = None
     generated_netascore: bool = False
 
-    # data placeholders
     od_clusters_a_gdf: Optional[gpd.GeoDataFrame] = None
     od_clusters_b_gdf: Optional[gpd.GeoDataFrame] = None
     od_table_df: Optional[pd.DataFrame] = None
@@ -81,183 +80,201 @@ class PipelineContext:
     routes_base_gdf: Optional[gpd.GeoDataFrame] = None
     routes_quality_gdf: Optional[gpd.GeoDataFrame] = None
     households_gdf: Optional[gpd.GeoDataFrame] = None
+    outputs: Optional[Dict[str, Path]] = None
 
 # ----------------------------------------------------------------------------------------------------------------------
-# step decorator
+# base class for pipeline step
 # ----------------------------------------------------------------------------------------------------------------------
 
-def step(func):
-    def wrapper(ctx: PipelineContext, *args, **kwargs):
-        logger.info(f"◯ {func.__name__.replace('_', ' ')}")
+class PipelineStep:
+    def run(self, ctx):
+        raise NotImplementedError()
+
+    def __call__(self, ctx, idx=None, total=None):
+        logger.info(f"◯ [{idx}/{total}] {self.__class__.__name__}")
         t0 = time.time()
-        result = func(ctx, *args, **kwargs)
+        result = self.run(ctx)
         t1 = time.time()
-        logger.info(f"● {func.__name__.replace('_', ' ')} ({t1 - t0:.1f} s)")
+        logger.info(f"● [{idx}/{total}] {self.__class__.__name__} ({t1 - t0:.1f} s)")
         return result
-    return wrapper
 
 # ----------------------------------------------------------------------------------------------------------------------
 # pipeline steps
 # ----------------------------------------------------------------------------------------------------------------------
 
-@step
-def handle_data(ctx, od_clusters_a, od_clusters_b, od_table, stops):
-    ctx.od_clusters_a_gdf = ensure_wgs84(gpd.read_file(od_clusters_a))
-    ctx.od_clusters_b_gdf = ensure_wgs84(gpd.read_file(od_clusters_b))
-    ctx.od_table_df = pd.read_csv(od_table, delimiter=";")
-    ctx.stops_gdf = ensure_wgs84(gpd.read_file(stops))
+class HandleDataStep(PipelineStep):
+    def __init__(self, od_clusters_a, od_clusters_b, od_table, stops):
+        self.od_clusters_a = od_clusters_a
+        self.od_clusters_b = od_clusters_b
+        self.od_table = od_table
+        self.stops = stops
 
-    ctx.target_srid = get_utm_srid(ctx.stops_gdf)
-    logger.info(f"– target_srid: {ctx.target_srid}")
-    ctx.stops_buffer_gdf = ctx.stops_gdf.to_crs(epsg=ctx.target_srid).geometry.buffer(DISTANCE_THRESHOLD * 2).to_crs(epsg=4326)
-    ctx.bbox_str = compute_bbox_str(ctx.stops_buffer_gdf)
-    logger.info(f"– bbox_str: {ctx.bbox_str}")
+    def run(self, ctx):
+        ctx.od_clusters_a_gdf = ensure_wgs84(gpd.read_file(self.od_clusters_a))
+        ctx.od_clusters_b_gdf = ensure_wgs84(gpd.read_file(self.od_clusters_b))
+        ctx.od_table_df = pd.read_csv(self.od_table, delimiter=";")
+        ctx.stops_gdf = ensure_wgs84(gpd.read_file(self.stops))
 
-    logger.info(f"– keeping clusters within distance <= {DISTANCE_THRESHOLD * 2} m")
-    ctx.od_clusters_a_gdf = filter_gdf(ctx.od_clusters_a_gdf, ctx.stops_buffer_gdf)
-    ctx.od_clusters_b_gdf = filter_gdf(ctx.od_clusters_b_gdf, ctx.stops_buffer_gdf)
+        ctx.target_srid = get_utm_srid(ctx.stops_gdf)
+        logger.info(f"– target_srid: {ctx.target_srid}")
+        ctx.stops_buffer_gdf = ctx.stops_gdf.to_crs(epsg=ctx.target_srid).geometry.buffer(DISTANCE_THRESHOLD * 2).to_crs(epsg=4326)
+        ctx.bbox_str = compute_bbox_str(ctx.stops_buffer_gdf)
+        logger.info(f"– bbox_str: {ctx.bbox_str}")
 
-
-@step
-def disaggregate_data(ctx, fields):
-    a_id, a_count, b_id, b_count, t_a_id, t_b_id, t_trips = fields
-
-    logger.info("– distribute points in clusters")
-    ctx.od_points_a_gdf = distribute_points_in_raster(ctx.od_clusters_a_gdf, a_id, a_count, ctx.seed)
-    ctx.od_points_b_gdf = distribute_points_in_raster(ctx.od_clusters_b_gdf, b_id, b_count, ctx.seed)
-
-    logger.info("– disaggregate table to edges")
-    ctx.od_edges_gdf = disaggregate_table_to_edges(ctx.od_points_a_gdf, ctx.od_points_b_gdf, ctx.od_table_df, t_a_id, t_b_id, t_trips, ctx.seed)
+        logger.info(f"– keeping clusters within distance <= {DISTANCE_THRESHOLD * 2} m")
+        ctx.od_clusters_a_gdf = filter_gdf(ctx.od_clusters_a_gdf, ctx.stops_buffer_gdf)
+        ctx.od_clusters_b_gdf = filter_gdf(ctx.od_clusters_b_gdf, ctx.stops_buffer_gdf)
 
 
-@step
-def generate_netascore(ctx):
-    if ctx.netascore_gpkg is None:
-        case_id = "default_case"
-        netascore_data_dir = NETASCORE_DIR / "data"
-        netascore_data_dir.mkdir(parents=True, exist_ok=True)
+class DisaggregateDataStep(PipelineStep):
+    def __init__(self, fields):
+        self.fields = fields
 
-        logger.info("– update settings")
-        shutil.copy(NETASCORE_PROFILE_BIKE, netascore_data_dir / "profile_bike.yml")
-        shutil.copy(NETASCORE_PROFILE_WALK, netascore_data_dir / "profile_walk.yml")
-        update_settings(NETASCORE_SETTINGS, netascore_data_dir / "settings.yml", ctx.target_srid, ctx.bbox_str, case_id)
+    def run(self, ctx):
+        a_id, a_count, b_id, b_count, t_a_id, t_b_id, t_trips = self.fields
 
-        logger.info("– run netascore")
-        run_netascore(NETASCORE_DIR, netascore_data_dir / "settings.yml")
-        ctx.netascore_gpkg = ctx.job_dir / "netascore.gpkg"
-        shutil.copy(netascore_data_dir / f"netascore_{case_id}.gpkg", ctx.netascore_gpkg)
-        shutil.rmtree(netascore_data_dir, ignore_errors=True)
+        logger.info("– distribute points in clusters")
+        ctx.od_points_a_gdf = distribute_points_in_raster(ctx.od_clusters_a_gdf, a_id, a_count, ctx.seed)
+        ctx.od_points_b_gdf = distribute_points_in_raster(ctx.od_clusters_b_gdf, b_id, b_count, ctx.seed)
 
-        ctx.generated_netascore = True
-
-    ctx.netascore_edges_gdf = ensure_wgs84(gpd.read_file(ctx.netascore_gpkg, layer="edge"))
-    ctx.netascore_nodes_gdf = ensure_wgs84(gpd.read_file(ctx.netascore_gpkg, layer="node"))
+        logger.info("– disaggregate table to edges")
+        ctx.od_edges_gdf = disaggregate_table_to_edges(ctx.od_points_a_gdf, ctx.od_points_b_gdf, ctx.od_table_df, t_a_id, t_b_id, t_trips, ctx.seed)
 
 
-@step
-def build_graphs(ctx):
-    graph_nodes_gdf = ctx.netascore_nodes_gdf.reset_index().rename(columns={'index': 'node_id'})
-    graph_nodes_gdf['node_id'] = graph_nodes_gdf['node_id'] + 1
+class GenerateNetascoreStep(PipelineStep):
+    def run(self, ctx):
+        if ctx.netascore_gpkg is None:
+            case_id = "default_case"
+            netascore_data_dir = NETASCORE_DIR / "data"
+            netascore_data_dir.mkdir(parents=True, exist_ok=True)
 
-    logger.info("- building base graph")
-    ctx.G_base = build_graph(ctx.netascore_edges_gdf, graph_nodes_gdf)
-    ctx.G_base_reversed = ctx.G_base.reverse(copy=True)
+            logger.info("– update settings")
+            shutil.copy(NETASCORE_PROFILE_BIKE, netascore_data_dir / "profile_bike.yml")
+            shutil.copy(NETASCORE_PROFILE_WALK, netascore_data_dir / "profile_walk.yml")
+            update_settings(NETASCORE_SETTINGS, netascore_data_dir / "settings.yml", ctx.target_srid, ctx.bbox_str,
+                            case_id)
 
-    logger.info(f"- building quality graph with index >= {INDEX_THRESHOLD}")
-    ctx.G_quality = build_graph_quality(ctx.netascore_edges_gdf, graph_nodes_gdf, INDEX_THRESHOLD)
-    ctx.G_quality_reversed = ctx.G_quality.reverse(copy=True)
+            logger.info("– run netascore")
+            run_netascore(NETASCORE_DIR, netascore_data_dir / "settings.yml")
+            ctx.netascore_gpkg = ctx.job_dir / "netascore.gpkg"
+            shutil.copy(netascore_data_dir / f"netascore_{case_id}.gpkg", ctx.netascore_gpkg)
+            shutil.rmtree(netascore_data_dir, ignore_errors=True)
+            ctx.generated_netascore = True
 
-
-@step
-def snap_points(ctx):
-    logger.info("– building balltree on graph nodes")
-    balltree_base, node_ids_base = build_balltree(ctx.G_base)
-    balltree_quality, node_ids_quality = build_balltree(ctx.G_quality)
-
-    logger.info("– snapping points to graph nodes")
-    ctx.od_points_a_gdf = snap_with_balltree(ctx.od_points_a_gdf, balltree_base, node_ids_base)
-    ctx.od_points_b_gdf = snap_with_balltree(ctx.od_points_b_gdf, balltree_base, node_ids_base)
-    ctx.stops_gdf = snap_with_balltree(ctx.stops_gdf, balltree_base, node_ids_base, "node_id_base")
-    ctx.stops_gdf = snap_with_balltree(ctx.stops_gdf, balltree_quality, node_ids_quality, "node_id_quality")
+        ctx.netascore_edges_gdf = ensure_wgs84(gpd.read_file(ctx.netascore_gpkg, layer="edge"))
+        ctx.netascore_nodes_gdf = ensure_wgs84(gpd.read_file(ctx.netascore_gpkg, layer="node"))
 
 
-@step
-def filter_network(ctx):
-    logger.info("– adding network distance")
-    ctx.od_edges_gdf = add_network_distance(ctx.od_edges_gdf, ctx.od_points_a_gdf, ctx.od_points_b_gdf, ctx.G_base)
+class BuildGraphsStep(PipelineStep):
+    def run(self, ctx):
+        graph_nodes_gdf = ctx.netascore_nodes_gdf.reset_index().rename(columns={'index': 'node_id'})
+        graph_nodes_gdf['node_id'] = graph_nodes_gdf['node_id'] + 1
 
-    logger.info(f"– removing edges and points with distance > {DISTANCE_THRESHOLD} m")
-    ctx.od_edges_gdf = ctx.od_edges_gdf[ctx.od_edges_gdf["distance"] <= DISTANCE_THRESHOLD]
-    valid_a_ids = ctx.od_edges_gdf["point_a_id"].unique()
-    valid_b_ids = ctx.od_edges_gdf["point_b_id"].unique()
-    ctx.od_points_a_gdf = ctx.od_points_a_gdf[ctx.od_points_a_gdf["point_id"].isin(valid_a_ids)]
-    ctx.od_points_b_gdf = ctx.od_points_b_gdf[ctx.od_points_b_gdf["point_id"].isin(valid_b_ids)]
+        logger.info("- building base graph")
+        ctx.G_base = build_graph(ctx.netascore_edges_gdf, graph_nodes_gdf)
+        ctx.G_base_reversed = ctx.G_base.reverse(copy=True)
 
-
-@step
-def evaluate_stops(ctx, stops_id_field):
-    ctx.edges_base_gdf, ctx.edges_quality_gdf, ctx.routes_base_gdf, ctx.routes_quality_gdf, ctx.stops_gdf, ctx.households_gdf = evaluate_accessibility(ctx.netascore_edges_gdf, ctx.stops_gdf, ctx.od_points_a_gdf, stops_id_field, ctx.G_base, ctx.G_quality, ctx.G_base_reversed, ctx.G_quality_reversed, DISTANCE_THRESHOLD)
+        logger.info(f"- building quality graph with index >= {INDEX_THRESHOLD}")
+        ctx.G_quality = build_graph_quality(ctx.netascore_edges_gdf, graph_nodes_gdf, INDEX_THRESHOLD)
+        ctx.G_quality_reversed = ctx.G_quality.reverse(copy=True)
 
 
-@step
-def export_results(ctx) -> Dict[str, Path]:
-    extension = {"GeoJSON": "geojson", "GPKG": "gpkg"}[ctx.output_format]
-    driver = {"GeoJSON": "GeoJSON", "GPKG": "GPKG"}[ctx.output_format]
+class SnapPointsStep(PipelineStep):
+    def run(self, ctx):
+        logger.info("– building balltree on graph nodes")
+        balltree_base, node_ids_base = build_balltree(ctx.G_base)
+        balltree_quality, node_ids_quality = build_balltree(ctx.G_quality)
 
-    od_points_a = ctx.job_dir / f"od_points_a.{extension}"
-    od_points_b = ctx.job_dir / f"od_points_b.{extension}"
-    od_edges = ctx.job_dir / f"od_edges.{extension}"
-    edges_base = ctx.job_dir / f"edges_base.{extension}"
-    edges_quality = ctx.job_dir / f"edges_quality.{extension}"
-    routes_base = ctx.job_dir / f"routes_base.{extension}"
-    routes_quality = ctx.job_dir / f"routes_quality.{extension}"
-    stops_updated = ctx.job_dir / f"stops_updated.{extension}"
-    households = ctx.job_dir / f"households.{extension}"
+        logger.info("– snapping points to graph nodes")
+        ctx.od_points_a_gdf = snap_with_balltree(ctx.od_points_a_gdf, balltree_base, node_ids_base)
+        ctx.od_points_b_gdf = snap_with_balltree(ctx.od_points_b_gdf, balltree_base, node_ids_base)
+        ctx.stops_gdf = snap_with_balltree(ctx.stops_gdf, balltree_base, node_ids_base, "node_id_base")
+        ctx.stops_gdf = snap_with_balltree(ctx.stops_gdf, balltree_quality, node_ids_quality, "node_id_quality")
 
-    ctx.od_points_a_gdf.to_file(od_points_a, driver=driver)
-    ctx.od_points_b_gdf.to_file(od_points_b, driver=driver)
-    ctx.od_edges_gdf.to_file(od_edges, driver=driver)
-    ctx.edges_base_gdf.to_file(edges_base, driver=driver)
-    ctx.edges_quality_gdf.to_file(edges_quality, driver=driver)
-    ctx.routes_base_gdf.to_file(routes_base, driver=driver)
-    ctx.routes_quality_gdf.to_file(routes_quality, driver=driver)
-    ctx.stops_gdf.to_file(stops_updated, driver=driver)
-    ctx.households_gdf.to_file(households, driver=driver)
 
-    outputs = {
-        "stops_updated": stops_updated,
-        "households": households
-    }
+class FilterNetworkStep(PipelineStep):
+    def run(self, ctx):
+        logger.info("– adding network distance")
+        ctx.od_edges_gdf = add_network_distance(ctx.od_edges_gdf, ctx.od_points_a_gdf, ctx.od_points_b_gdf, ctx.G_base)
 
-    if ctx.generated_netascore:
-        outputs["netascore_gpkg"] = ctx.netascore_gpkg
+        logger.info(f"– removing edges and points with distance > {DISTANCE_THRESHOLD} m")
+        ctx.od_edges_gdf = ctx.od_edges_gdf[ctx.od_edges_gdf["distance"] <= DISTANCE_THRESHOLD]
+        valid_a_ids = ctx.od_edges_gdf["point_a_id"].unique()
+        valid_b_ids = ctx.od_edges_gdf["point_b_id"].unique()
+        ctx.od_points_a_gdf = ctx.od_points_a_gdf[ctx.od_points_a_gdf["point_id"].isin(valid_a_ids)]
+        ctx.od_points_b_gdf = ctx.od_points_b_gdf[ctx.od_points_b_gdf["point_id"].isin(valid_b_ids)]
 
-    return outputs
+
+class EvaluateStopsStep(PipelineStep):
+    def __init__(self, stops_id_field):
+        self.stops_id_field = stops_id_field
+
+    def run(self, ctx):
+        ctx.edges_base_gdf, ctx.edges_quality_gdf, ctx.routes_base_gdf, ctx.routes_quality_gdf, ctx.stops_gdf, ctx.households_gdf = evaluate_accessibility(
+            ctx.netascore_edges_gdf, ctx.stops_gdf, ctx.od_points_a_gdf, self.stops_id_field, ctx.G_base, ctx.G_quality,
+            ctx.G_base_reversed, ctx.G_quality_reversed, DISTANCE_THRESHOLD
+        )
+
+
+class ExportResultsStep(PipelineStep):
+    def run(self, ctx):
+        extension = {"GeoJSON": "geojson", "GPKG": "gpkg"}[ctx.output_format]
+        driver = {"GeoJSON": "GeoJSON", "GPKG": "GPKG"}[ctx.output_format]
+
+        od_points_a = ctx.job_dir / f"od_points_a.{extension}"
+        od_points_b = ctx.job_dir / f"od_points_b.{extension}"
+        od_edges = ctx.job_dir / f"od_edges.{extension}"
+        edges_base = ctx.job_dir / f"edges_base.{extension}"
+        edges_quality = ctx.job_dir / f"edges_quality.{extension}"
+        routes_base = ctx.job_dir / f"routes_base.{extension}"
+        routes_quality = ctx.job_dir / f"routes_quality.{extension}"
+        stops_updated = ctx.job_dir / f"stops_updated.{extension}"
+        households = ctx.job_dir / f"households.{extension}"
+
+        ctx.od_points_a_gdf.to_file(od_points_a, driver=driver)
+        ctx.od_points_b_gdf.to_file(od_points_b, driver=driver)
+        ctx.od_edges_gdf.to_file(od_edges, driver=driver)
+        ctx.edges_base_gdf.to_file(edges_base, driver=driver)
+        ctx.edges_quality_gdf.to_file(edges_quality, driver=driver)
+        ctx.routes_base_gdf.to_file(routes_base, driver=driver)
+        ctx.routes_quality_gdf.to_file(routes_quality, driver=driver)
+        ctx.stops_gdf.to_file(stops_updated, driver=driver)
+        ctx.households_gdf.to_file(households, driver=driver)
+
+        outputs = {
+            "stops_updated": stops_updated,
+            "households": households
+        }
+
+        if ctx.generated_netascore:
+            outputs["netascore_gpkg"] = ctx.netascore_gpkg
+
+        ctx.outputs = outputs
 
 # ----------------------------------------------------------------------------------------------------------------------
 # main orchestrator
 # ----------------------------------------------------------------------------------------------------------------------
 
 def run_pipeline(
-    od_clusters_a: Path,
-    od_clusters_b: Path,
-    od_table: Path,
-    stops: Path,
+        od_clusters_a: Path,
+        od_clusters_b: Path,
+        od_table: Path,
+        stops: Path,
 
-    od_clusters_a_id_field: str,
-    od_clusters_a_count_field: str,
-    od_clusters_b_id_field: str,
-    od_clusters_b_count_field: str,
-    od_table_a_id_field: str,
-    od_table_b_id_field: str,
-    od_table_trips_field: str,
-    stops_id_field: str,
+        od_clusters_a_id_field: str,
+        od_clusters_a_count_field: str,
+        od_clusters_b_id_field: str,
+        od_clusters_b_count_field: str,
+        od_table_a_id_field: str,
+        od_table_b_id_field: str,
+        od_table_trips_field: str,
+        stops_id_field: str,
 
-    netascore_gpkg: Optional[Path] = None,
-    output_format: str = "GeoJSON",
-    seed: Optional[int] = None,
+        netascore_gpkg: Optional[Path] = None,
+        output_format: str = "GeoJSON",
+        seed: Optional[int] = None,
 
-    job_dir: Optional[Path] = None,
+        job_dir: Optional[Path] = None,
 ) -> Dict[str, Path]:
     if output_format not in {"GeoJSON", "GPKG"}:
         raise ValueError(f"Unsupported output format: {output_format}")
@@ -287,16 +304,20 @@ def run_pipeline(
         od_table_a_id_field, od_table_b_id_field, od_table_trips_field
     )
 
-    handle_data(ctx, od_clusters_a, od_clusters_b, od_table, stops)
-    disaggregate_data(ctx, fields)
-    generate_netascore(ctx)
-    build_graphs(ctx)
-    snap_points(ctx)
-    filter_network(ctx)
-    evaluate_stops(ctx, stops_id_field)
-    outputs = export_results(ctx)
+    steps = [
+        HandleDataStep(od_clusters_a, od_clusters_b, od_table, stops),
+        DisaggregateDataStep(fields),
+        GenerateNetascoreStep(),
+        BuildGraphsStep(),
+        SnapPointsStep(),
+        FilterNetworkStep(),
+        EvaluateStopsStep(stops_id_field),
+        ExportResultsStep()
+    ]
+    for i, step in enumerate(steps, 1):
+        step(ctx, idx=i, total=len(steps))
 
     t1 = time.time()
     logger.info(f"■ job_id: {job_id} ({t1 - t0:.1f} s)")
 
-    return outputs
+    return ctx.outputs
