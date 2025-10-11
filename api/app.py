@@ -48,6 +48,13 @@ def verify_api_key(request: Request):
     if not api_key or not hmac.compare_digest(api_key, API_KEY):
         raise HTTPException(status_code=401, detail="unauthorized: invalid api key")
 
+
+def check_extension(upload: UploadFile, expected: set[str]):
+    suffix = Path(upload.filename).suffix.lower()
+    if suffix not in expected:
+        raise HTTPException(status_code=400, detail=f"unsupported file type: {suffix or 'none'}, allowed: {', '.join(sorted(expected))}")
+    return suffix
+
 # ----------------------------------------------------------------------------------------------------------------------
 # jobs + worker
 # ----------------------------------------------------------------------------------------------------------------------
@@ -178,6 +185,13 @@ async def create_job(
     job_id = str(uuid.uuid4())
     job_dir = (JOBS_DIR / job_id)
     job_dir.mkdir(parents=True, exist_ok=True)
+
+    check_extension(od_clusters_a, {"geojson", ".gpkg"})
+    check_extension(od_clusters_b, {"geojson", ".gpkg"})
+    check_extension(od_table, {".csv"})
+    check_extension(stops, {"geojson", ".gpkg"})
+    if netascore_gpkg:
+        check_extension(netascore_gpkg, {".gpkg"})
 
     od_clusters_a_path = job_dir / f"od_clusters_a{Path(od_clusters_a.filename).suffix}"
     od_clusters_a_path.write_bytes(await od_clusters_a.read())
