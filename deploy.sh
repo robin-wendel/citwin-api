@@ -22,7 +22,7 @@ set +a
 
 
 # ensuring required variables exist
-REQUIRED=("SERVER" "PROJECT_NAME" "PROJECT_DIR" "GIT_REPO_URL" "GIT_BRANCH" "API_PORT" "API_ROOT_PATH")
+REQUIRED=("PROJECT_NAME" "DEPLOY_USER" "DEPLOY_HOST" "DEPLOY_PORT" "DEPLOY_PATH" "GIT_REPO_URL" "GIT_BRANCH" "API_PORT" "API_ROOT_PATH")
 for VAR in "${REQUIRED[@]}"; do
   if [[ -z "${!VAR}" ]]; then
     echo "– missing required variable: $VAR"
@@ -30,18 +30,18 @@ for VAR in "${REQUIRED[@]}"; do
   fi
 done
 
-echo "□ deploying $PROJECT_NAME to $SERVER using $ENV_FILE"
+echo "□ deploying $PROJECT_NAME to $DEPLOY_HOST using $ENV_FILE"
 
-ssh "$SERVER" bash << EOF
+ssh -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" bash << EOF
 set -e
 
 # git
-if [ ! -d "$PROJECT_DIR/.git" ]; then
+if [ ! -d "$DEPLOY_PATH/.git" ]; then
   echo "– cloning branch: $GIT_BRANCH"
-  git clone -b "$GIT_BRANCH" "$GIT_REPO_URL" "$PROJECT_DIR"
+  git clone -b "$GIT_BRANCH" "$GIT_REPO_URL" "$DEPLOY_PATH"
 else
   echo "– pulling branch: $GIT_BRANCH"
-  cd "$PROJECT_DIR"
+  cd "$DEPLOY_PATH"
   git fetch origin
   git checkout "$GIT_BRANCH"
   git pull origin "$GIT_BRANCH"
@@ -49,9 +49,9 @@ fi
 EOF
 
 echo "– uploading env for docker"
-scp .env.docker "$SERVER:$PROJECT_DIR/.env.docker"
+scp -P "$DEPLOY_PORT" .env.docker "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/.env.docker"
 
-ssh "$SERVER" bash << EOF
+ssh -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" bash << EOF
 set -e
 
 # nginx
@@ -59,7 +59,7 @@ echo "– configuring nginx: $PROJECT_NAME"
 sudo mkdir -p /etc/nginx/conf.d/apps-enabled
 EOF
 
-ssh "$SERVER" "sudo tee /etc/nginx/conf.d/apps-enabled/$PROJECT_NAME.conf >/dev/null" << EOF
+ssh -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "sudo tee /etc/nginx/conf.d/apps-enabled/$PROJECT_NAME.conf >/dev/null" << EOF
 location $API_ROOT_PATH/ {
     proxy_pass http://localhost:$API_PORT/;
     proxy_redirect off;
@@ -70,7 +70,7 @@ location $API_ROOT_PATH/ {
 }
 EOF
 
-ssh "$SERVER" bash << EOF
+ssh -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" bash << EOF
 if sudo nginx -t; then
   sudo systemctl reload nginx
 else
@@ -79,13 +79,13 @@ else
 fi
 
 # docker
-echo "– starting docker containers: $PROJECT_DIR"
-cd "$PROJECT_DIR"
+echo "– starting docker containers: $DEPLOY_PATH"
+cd "$DEPLOY_PATH"
 export PROJECT_NAME="$PROJECT_NAME"
 export API_PORT="$API_PORT"
 export API_ROOT_PATH=$API_ROOT_PATH
-docker compose down || true
+docker compose down -v || true
 docker compose up -d --build
 EOF
 
-echo "■ deploy: $PROJECT_NAME to $SERVER using $ENV_FILE"
+echo "■ deploy: $PROJECT_NAME to $DEPLOY_HOST using $ENV_FILE"
