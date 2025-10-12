@@ -172,7 +172,17 @@ async def lifespan(_app: FastAPI):
 # fastapi
 # ----------------------------------------------------------------------------------------------------------------------
 
-app = FastAPI(title="CITWIN API", version="0.9.0", root_path=settings.api_root_path, lifespan=lifespan)
+app = FastAPI(
+    title="CITWIN API",
+    version="0.1.0",
+    root_path=settings.api_root_path,
+    lifespan=lifespan,
+    redoc_url=None,
+    swagger_ui_parameters={
+        "defaultModelsExpandDepth": -1,
+        "tryItOutEnabled": True,
+    }
+)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # ----------------------------------------------------------------------------------------------------------------------
