@@ -72,10 +72,10 @@ Job = Dict[str, Any]
 JOBS: Dict[str, Job] = {}
 JOB_QUEUE: "queue.Queue[str]" = queue.Queue()
 JOBS_LOCK = threading.Lock()
-
+STOP_EVENT = threading.Event()
 
 def job_worker():
-    while True:
+    while not STOP_EVENT.is_set():
         try:
             job_id = JOB_QUEUE.get(timeout=0.5)
         except queue.Empty:
@@ -139,7 +139,7 @@ def delete_old_jobs():
 
 def delete_old_jobs_periodically():
     delete_old_jobs()
-    while True:
+    while not STOP_EVENT.is_set():
         time.sleep(3600)
         now = datetime.now(timezone.utc)
         with JOBS_LOCK:
@@ -155,13 +155,18 @@ def delete_old_jobs_periodically():
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    WORKER_THREAD = threading.Thread(target=job_worker, daemon=True)
-    WORKER_THREAD.start()
+    worker_thread = threading.Thread(target=job_worker, daemon=True)
+    cleaner_thread = threading.Thread(target=delete_old_jobs_periodically, daemon=True)
 
-    CLEANER_THREAD = threading.Thread(target=delete_old_jobs_periodically, daemon=True)
-    CLEANER_THREAD.start()
+    worker_thread.start()
+    cleaner_thread.start()
 
     yield
+
+    STOP_EVENT.set()
+
+    worker_thread.join(timeout=5)
+    cleaner_thread.join(timeout=5)
 
 # ----------------------------------------------------------------------------------------------------------------------
 # fastapi
