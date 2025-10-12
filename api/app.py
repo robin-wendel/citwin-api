@@ -206,10 +206,10 @@ async def create_job(
     job_dir = (JOBS_DIR / job_id)
     job_dir.mkdir(parents=True, exist_ok=True)
 
-    check_extension(od_clusters_a, {"geojson", ".gpkg"})
-    check_extension(od_clusters_b, {"geojson", ".gpkg"})
+    check_extension(od_clusters_a, {".geojson", ".gpkg"})
+    check_extension(od_clusters_b, {".geojson", ".gpkg"})
     check_extension(od_table, {".csv"})
-    check_extension(stops, {"geojson", ".gpkg"})
+    check_extension(stops, {".geojson", ".gpkg"})
     if netascore_gpkg:
         check_extension(netascore_gpkg, {".gpkg"})
 
