@@ -41,6 +41,10 @@ sh deploy.sh prod
 sh deploy.sh staging
 ```
 
+```bash
+sh deploy.sh dev
+```
+
 Undeploy: stop and remove containers, delete project directory, unconfigure nginx
 
 ```bash
@@ -49,6 +53,10 @@ sh undeploy.sh prod
 
 ```bash
 sh undeploy.sh staging
+```
+
+```bash
+sh undeploy.sh dev
 ```
 
 ---
@@ -99,4 +107,14 @@ python test/test_api.py --base-url http://zgis228.geo.sbg.ac.at/api/citwin-stagi
 
 ```bash
 python test/test_api.py --base-url http://zgis228.geo.sbg.ac.at/api/citwin-staging --no-download --upload-netascore
+```
+
+Remote – Development (`.env.local`)
+
+```bash
+python test/test_api.py --base-url http://zgis228.geo.sbg.ac.at/api/citwin-dev --no-download
+```
+
+```bash
+python test/test_api.py --base-url http://zgis228.geo.sbg.ac.at/api/citwin-dev --no-download --upload-netascore
 ```
