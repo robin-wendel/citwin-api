@@ -42,9 +42,11 @@ if [ ! -d "$DEPLOY_PATH/.git" ]; then
 else
   echo "– pulling branch: $GIT_BRANCH"
   cd "$DEPLOY_PATH"
-  git fetch origin
+  git fetch origin "$GIT_BRANCH"
   git checkout "$GIT_BRANCH"
-  git pull origin "$GIT_BRANCH"
+  git reset --hard origin/"$GIT_BRANCH"
+  git clean -fd
+  git pull --tags
 fi
 EOF
 
