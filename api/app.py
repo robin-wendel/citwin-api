@@ -174,7 +174,7 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(
     title="CITWIN API",
-    version="0.1.0",
+    version="0.2.0",
     root_path=settings.api_root_path,
     lifespan=lifespan,
     redoc_url=None,

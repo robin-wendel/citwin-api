@@ -25,7 +25,7 @@ DOWNLOADS_DIR = Path(__file__).parents[0] / "downloads"
 
 API_KEY = settings.api_key
 
-headers = {"Authorization": f"Bearer {API_KEY}"}
+headers = {"x-api-key": API_KEY}
 
 
 def main():
