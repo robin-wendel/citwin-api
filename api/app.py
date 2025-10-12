@@ -11,17 +11,33 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from fastapi import FastAPI, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi import FastAPI, Depends, File, Form, Security, UploadFile
+from fastapi.exceptions import HTTPException
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.security.api_key import APIKeyHeader
 from pydantic import BaseModel, Field
 
 from api.config import settings
 from api.paths import JOBS_DIR
 from pipeline.run import run_pipeline, setup_logging
 
+# ----------------------------------------------------------------------------------------------------------------------
+# security
+# ----------------------------------------------------------------------------------------------------------------------
+
 API_KEY = settings.api_key
 
+api_key_header = APIKeyHeader(name="x-api-key", auto_error=False)
+
+
+async def verify_api_key(api_key: str = Security(api_key_header)):
+    if not api_key or not hmac.compare_digest(api_key, API_KEY):
+        raise HTTPException(status_code=403, detail="unauthorized: invalid api key")
+
+# ----------------------------------------------------------------------------------------------------------------------
+# models
+# ----------------------------------------------------------------------------------------------------------------------
 
 class CreateJobResponse(BaseModel):
     job_id: str = Field(..., description="unique job ID", examples=["550e8400-e29b-41d4-a716-446655440000"])
@@ -32,19 +48,9 @@ class OutputFormat(str, Enum):
     geojson = "GeoJSON"
     gpkg = "GPKG"
 
-
-def verify_api_key(request: Request):
-    api_key = None
-    auth_header = request.headers.get("Authorization")
-    if auth_header and auth_header.startswith("Bearer "):
-        api_key = auth_header.split(" ", 1)[1]
-
-    if not api_key:
-        api_key = request.query_params.get("api_key")
-
-    if not api_key or not hmac.compare_digest(api_key, API_KEY):
-        raise HTTPException(status_code=401, detail="unauthorized: invalid api key")
-
+# ----------------------------------------------------------------------------------------------------------------------
+# utilities
+# ----------------------------------------------------------------------------------------------------------------------
 
 def check_extension(upload: UploadFile, expected: set[str]):
     suffix = Path(upload.filename).suffix.lower()
@@ -52,11 +58,14 @@ def check_extension(upload: UploadFile, expected: set[str]):
         raise HTTPException(status_code=400, detail=f"unsupported file type: {suffix or 'none'}, allowed: {', '.join(sorted(expected))}")
     return suffix
 
+# ----------------------------------------------------------------------------------------------------------------------
+# logging
+# ----------------------------------------------------------------------------------------------------------------------
 
 logger = setup_logging()
 
 # ----------------------------------------------------------------------------------------------------------------------
-# jobs + worker
+# jobs (worker / queue)
 # ----------------------------------------------------------------------------------------------------------------------
 
 Job = Dict[str, Any]
@@ -161,6 +170,7 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(title="CITWIN API", version="0.9.0", root_path=settings.api_root_path, lifespan=lifespan)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
+# ----------------------------------------------------------------------------------------------------------------------
 
 @app.get("/health")
 def health_check():
