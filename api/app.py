@@ -89,6 +89,10 @@ def job_worker():
             job["status"] = "running"
             job["started_at"] = datetime.now(timezone.utc).isoformat()
 
+        def progress_callback(step_message: str):
+            with JOBS_LOCK:
+                job["step"] = step_message
+
         try:
             outputs = run_pipeline(
                 od_clusters_a=Path(job.get("od_clusters_a")),
@@ -110,9 +114,12 @@ def job_worker():
                 seed=job.get("seed"),
 
                 job_dir=Path(job.get("job_dir")),
+
+                progress_callback=progress_callback
             )
             with JOBS_LOCK:
                 job["status"] = "done"
+                job["step"] = None
                 job["outputs"] = {k: str(v) for k, v in outputs.items()}
                 job["finished_at"] = datetime.now(timezone.utc).isoformat()
         except Exception as e:
@@ -243,6 +250,7 @@ async def create_job(
     job = {
         "job_id": job_id,
         "status": "queued",
+        "step": None,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "job_dir": str(job_dir),
 
@@ -278,7 +286,7 @@ def get_job(job_id: str):
         job = JOBS.get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="job not found")
-    return {k: v for k, v in job.items() if k in {"job_id", "status", "created_at", "started_at", "error", "finished_at"}}
+    return {k: v for k, v in job.items() if k in {"job_id", "status", "step", "created_at", "started_at", "error", "finished_at"}}
 
 
 @app.get("/jobs/{job_id}/downloads", dependencies=[Depends(verify_api_key)])

@@ -275,6 +275,8 @@ def run_pipeline(
         seed: Optional[int] = None,
 
         job_dir: Optional[Path] = None,
+
+        progress_callback=None
 ) -> Dict[str, Path]:
     if output_format not in {"GeoJSON", "GPKG"}:
         raise ValueError(f"Unsupported output format: {output_format}")
@@ -315,6 +317,8 @@ def run_pipeline(
         ExportResultsStep()
     ]
     for i, step in enumerate(steps, 1):
+        if progress_callback:
+            progress_callback(f"{i}/{len(steps)}")
         step(ctx, idx=i, total=len(steps))
 
     t1 = time.time()
