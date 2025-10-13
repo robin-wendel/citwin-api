@@ -1,3 +1,4 @@
+import asyncio
 import hmac
 import queue
 import shutil
@@ -11,7 +12,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from fastapi import FastAPI, Depends, File, Form, Security, UploadFile
+from fastapi import FastAPI, Depends, File, Form, Request, Security, UploadFile, WebSocket
 from fastapi.exceptions import HTTPException
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse
@@ -42,6 +43,8 @@ async def verify_api_key(api_key: str = Security(api_key_header)):
 class CreateJobResponse(BaseModel):
     job_id: str = Field(..., description="unique job ID", examples=["550e8400-e29b-41d4-a716-446655440000"])
     status: str = Field(..., description="status of job", examples=["queued"])
+    websocket_url: str = Field(..., description="websocket URL to notify when job is done", examples=["wss://api.example.com/ws/550e8400-e29b-41d4-a716-446655440000"])
+
 
 
 class OutputFormat(str, Enum):
@@ -201,6 +204,8 @@ def health_check():
 
 @app.post("/jobs", response_model=CreateJobResponse, dependencies=[Depends(verify_api_key)])
 async def create_job(
+        request: Request,
+
         od_clusters_a: UploadFile = File(..., description="origin clusters file", examples=["b_klynger.gpkg"]),
         od_clusters_b: UploadFile = File(..., description="destination clusters file", examples=["a_klynger.gpkg"]),
         od_table: UploadFile = File(..., description="origin-destination table file", examples=["Data_2023_0099_Tabel_1.csv"]),
@@ -277,7 +282,11 @@ async def create_job(
         JOBS[job_id] = job
     JOB_QUEUE.put(job_id)
 
-    return CreateJobResponse(job_id=job_id, status=job["status"])
+    base_url = str(request.base_url).rstrip("/")
+    root_path = request.scope.get("root_path", "").rstrip("/")
+    websocket_url = f"{base_url}{root_path}/ws/{job_id}".replace("http", "ws")
+
+    return CreateJobResponse(job_id=job_id, status=job["status"], websocket_url=websocket_url)
 
 
 @app.get("/jobs/{job_id}", dependencies=[Depends(verify_api_key)])
@@ -331,3 +340,19 @@ def download_output(job_id: str, key: str):
         raise HTTPException(status_code=500, detail="file not found")
 
     return FileResponse(out_path, filename=out_path.name)
+
+
+@app.websocket("/ws/{job_id}")
+async def ws_job_done(websocket: WebSocket, job_id: str):
+    await websocket.accept()
+    try:
+        while True:
+            with JOBS_LOCK:
+                job = JOBS.get(job_id)
+                if job and job["status"] in {"done", "failed"}:
+                    break
+            await asyncio.sleep(1)
+
+        await websocket.send_json({k: v for k, v in job.items() if k in {"job_id", "status", "step", "created_at", "started_at", "error", "finished_at"}})
+    finally:
+        await websocket.close()

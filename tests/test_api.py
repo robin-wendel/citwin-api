@@ -54,8 +54,11 @@ def main():
 
     response = requests.post(f"{BASE_URL}/jobs", headers=headers, files=files, data=data)
     response.raise_for_status()
-    job_id = response.json().get("job_id")
+    result = response.json()
+    job_id = result.get("job_id")
+    websocket_url = result.get("websocket_url")
     print(f"□ job_id: {job_id}")
+    print(f"– websocket_url: {websocket_url}")
 
     # get job status
     while True:
