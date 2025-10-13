@@ -15,9 +15,9 @@ from typing import Any, Dict, Optional
 from fastapi import FastAPI, Depends, File, Form, Request, Security, UploadFile, WebSocket
 from fastapi.exceptions import HTTPException
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse
 from fastapi.security.api_key import APIKeyHeader
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, RootModel
 
 from api.config import settings
 from api.paths import JOBS_DIR
@@ -34,22 +34,41 @@ api_key_header = APIKeyHeader(name="x-api-key", auto_error=False)
 
 async def verify_api_key(api_key: str = Security(api_key_header)):
     if not api_key or not hmac.compare_digest(api_key, API_KEY):
-        raise HTTPException(status_code=403, detail="unauthorized: invalid api key")
+        raise HTTPException(status_code=403, detail="Unauthorized: Invalid API key")
 
 # ----------------------------------------------------------------------------------------------------------------------
 # models
 # ----------------------------------------------------------------------------------------------------------------------
 
-class CreateJobResponse(BaseModel):
-    job_id: str = Field(..., description="unique job ID", examples=["550e8400-e29b-41d4-a716-446655440000"])
-    status: str = Field(..., description="status of job", examples=["queued"])
-    websocket_url: str = Field(..., description="websocket URL to notify when job is done", examples=["wss://api.example.com/ws/550e8400-e29b-41d4-a716-446655440000"])
-
-
-
 class OutputFormat(str, Enum):
     geojson = "GeoJSON"
     gpkg = "GPKG"
+
+
+class JobCreateOut(BaseModel):
+    job_id: str = Field(..., description="Unique job ID", examples=["550e8400-e29b-41d4-a716-446655440000"])
+    status: str = Field(..., description="Initial job status", examples=["queued"])
+    websocket_url: str = Field(..., description="WebSocket URL to monitor job completion", examples=["wss://api.example.com/ws/550e8400-e29b-41d4-a716-446655440000"])
+
+
+class JobStatusOut(BaseModel):
+    job_id: str = Field(..., description="Unique job ID", examples=["550e8400-e29b-41d4-a716-446655440000"])
+    status: str = Field(..., description="Job status", examples=["running", "done", "failed"])
+    step: Optional[str] = Field(None, description="Current processing step", examples=["1/10"])
+    created_at: Optional[str] = Field(None, description="ISO 8601 creation time", examples=["2025-10-13T12:46:57"])
+    started_at: Optional[str] = Field(None, description="ISO 8601 start time", examples=["2025-10-13T12:46:57Z"])
+    finished_at: Optional[str] = Field(None, description="ISO 8601 finish time", examples=["2025-10-13T12:47:58Z"])
+    error: Optional[str] = Field(None, description="Error message if failed")
+
+
+class JobDownloadItem(BaseModel):
+    key: str = Field(..., example="result")
+    filename: str = Field(..., example="result.geojson")
+    download_url: str = Field(..., example="/jobs/550e8400-e29b-41d4-a716-446655440000/download/result")
+
+
+class JobDownloadsOut(RootModel[list[JobDownloadItem]]):
+    pass
 
 # ----------------------------------------------------------------------------------------------------------------------
 # utilities
@@ -58,7 +77,7 @@ class OutputFormat(str, Enum):
 def check_extension(upload: UploadFile, expected: set[str]):
     suffix = Path(upload.filename).suffix.lower()
     if suffix not in expected:
-        raise HTTPException(status_code=400, detail=f"unsupported file type: {suffix or 'none'}, allowed: {', '.join(sorted(expected))}")
+        raise HTTPException(status_code=400, detail=f"Unsupported file type: {suffix or 'none'}, allowed: {', '.join(sorted(expected))}")
     return suffix
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -90,7 +109,7 @@ def job_worker():
                 JOB_QUEUE.task_done()
                 continue
             job["status"] = "running"
-            job["started_at"] = datetime.now(timezone.utc).isoformat()
+            job["started_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
         def progress_callback(step_message: str):
             with JOBS_LOCK:
@@ -124,13 +143,13 @@ def job_worker():
                 job["status"] = "done"
                 job["step"] = None
                 job["outputs"] = {k: str(v) for k, v in outputs.items()}
-                job["finished_at"] = datetime.now(timezone.utc).isoformat()
+                job["finished_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         except Exception as e:
             with JOBS_LOCK:
                 job["status"] = "failed"
                 job["error"] = str(e)
                 job["traceback"] = traceback.format_exc()
-                job["finished_at"] = datetime.now(timezone.utc).isoformat()
+                job["finished_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         finally:
             JOB_QUEUE.task_done()
 
@@ -202,28 +221,28 @@ def health_check():
     return {"status": "ok"}
 
 
-@app.post("/jobs", response_model=CreateJobResponse, dependencies=[Depends(verify_api_key)])
+@app.post("/jobs", response_model=JobCreateOut, dependencies=[Depends(verify_api_key)])
 async def create_job(
         request: Request,
 
-        od_clusters_a: UploadFile = File(..., description="origin clusters file", examples=["b_klynger.gpkg"]),
-        od_clusters_b: UploadFile = File(..., description="destination clusters file", examples=["a_klynger.gpkg"]),
-        od_table: UploadFile = File(..., description="origin-destination table file", examples=["Data_2023_0099_Tabel_1.csv"]),
-        stops: UploadFile = File(..., description="public transport stops file", examples=["dynlayer.gpkg"]),
+        od_clusters_a: UploadFile = File(..., description="Origin clusters file", examples=["b_klynger.gpkg"]),
+        od_clusters_b: UploadFile = File(..., description="Destination clusters file", examples=["a_klynger.gpkg"]),
+        od_table: UploadFile = File(..., description="Origin-destination table file", examples=["Data_2023_0099_Tabel_1.csv"]),
+        stops: UploadFile = File(..., description="Public transport stops file", examples=["dynlayer.gpkg"]),
 
-        od_clusters_a_id_field: str = Form(..., description="id field for origin clusters", examples=["klynge_id"]),
-        od_clusters_a_count_field: str = Form(..., description="count field for origin clusters", examples=["Beboere"]),
-        od_clusters_b_id_field: str = Form(..., description="id field for destination clusters", examples=["klynge_id"]),
-        od_clusters_b_count_field: str = Form(..., description="count field for destination clusters", examples=["Arbejdere"]),
-        od_table_a_id_field: str = Form(..., description="id field for origin clusters in origin-destination table", examples=["Bopael_klynge_id"]),
-        od_table_b_id_field: str = Form(..., description="id field for destination clusters in origin-destination table", examples=["Arbejssted_klynge_id"]),
-        od_table_trips_field: str = Form(..., description="trips field in origin-destination table", examples=["Antal"]),
-        stops_id_field: str = Form(..., description="id field for public transport stops", examples=["stopnummer"]),
+        od_clusters_a_id_field: str = Form(..., description="ID field for origin clusters", examples=["klynge_id"]),
+        od_clusters_a_count_field: str = Form(..., description="Count field for origin clusters", examples=["Beboere"]),
+        od_clusters_b_id_field: str = Form(..., description="ID field for destination clusters", examples=["klynge_id"]),
+        od_clusters_b_count_field: str = Form(..., description="Count field for destination clusters", examples=["Arbejdere"]),
+        od_table_a_id_field: str = Form(..., description="ID field for origin clusters in origin-destination table", examples=["Bopael_klynge_id"]),
+        od_table_b_id_field: str = Form(..., description="ID field for destination clusters in origin-destination table", examples=["Arbejssted_klynge_id"]),
+        od_table_trips_field: str = Form(..., description="Trips field in origin-destination table", examples=["Antal"]),
+        stops_id_field: str = Form(..., description="ID field for public transport stops", examples=["stopnummer"]),
 
-        netascore_gpkg: Optional[UploadFile] = File(None, description="pre-generated netascore file"),
-        output_format: Optional[OutputFormat] = Form(OutputFormat.geojson, description="output format"),
-        seed: Optional[int] = Form(None, description="random seed for reproducibility of results"),
-):
+        netascore_gpkg: Optional[UploadFile] = File(None, description="Pre-generated netascore file"),
+        output_format: Optional[OutputFormat] = Form(OutputFormat.geojson, description="Output format"),
+        seed: Optional[int] = Form(None, description="Random seed for reproducibility of results"),
+) -> JobCreateOut:
     job_id = str(uuid.uuid4())
     job_dir = (JOBS_DIR / job_id)
     job_dir.mkdir(parents=True, exist_ok=True)
@@ -256,7 +275,7 @@ async def create_job(
         "job_id": job_id,
         "status": "queued",
         "step": None,
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "job_dir": str(job_dir),
 
         "od_clusters_a": str(od_clusters_a_path),
@@ -286,58 +305,58 @@ async def create_job(
     root_path = request.scope.get("root_path", "").rstrip("/")
     websocket_url = f"{base_url}{root_path}/ws/{job_id}".replace("http", "ws")
 
-    return CreateJobResponse(job_id=job_id, status=job["status"], websocket_url=websocket_url)
+    return JobCreateOut(job_id=job_id, status=job["status"], websocket_url=websocket_url)
 
 
-@app.get("/jobs/{job_id}", dependencies=[Depends(verify_api_key)])
-def get_job(job_id: str):
+@app.get("/jobs/{job_id}", response_model=JobStatusOut, response_model_exclude_none=True, dependencies=[Depends(verify_api_key)])
+def get_job_status(job_id: str) -> JobStatusOut:
     with JOBS_LOCK:
         job = JOBS.get(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="job not found")
-    return {k: v for k, v in job.items() if k in {"job_id", "status", "step", "created_at", "started_at", "error", "finished_at"}}
+        raise HTTPException(status_code=404, detail="Job not found")
+    return JobStatusOut(**job)
 
 
-@app.get("/jobs/{job_id}/downloads", dependencies=[Depends(verify_api_key)])
-def list_downloads(job_id: str):
+@app.get("/jobs/{job_id}/downloads", response_model=JobDownloadsOut, dependencies=[Depends(verify_api_key)])
+def get_job_downloads(job_id: str) -> JobDownloadsOut:
     with JOBS_LOCK:
         job = JOBS.get(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="job not found")
+        raise HTTPException(status_code=404, detail="Job not found")
     if job.get("status") != "done":
-        raise HTTPException(status_code=409, detail=f"job not finished (status={job.get('status')})")
+        raise HTTPException(status_code=409, detail=f"Job not finished (status={job.get('status')})")
 
-    outputs: dict[str, str] = job.get("outputs") or {}
-    result = []
-    for key, path_str in outputs.items():
-        p = Path(path_str)
-        if p.exists():
-            result.append({
-                "key": key,
-                "filename": p.name,
-                "download_url": f"/jobs/{job_id}/download/{key}",
-            })
+    outputs = job.get("outputs") or {}
+    downloads = [
+        JobDownloadItem(
+            key=key,
+            filename=Path(path).name,
+            download_url=f"/jobs/{job_id}/download/{key}",
+        )
+        for key, path in outputs.items()
+        if Path(path).exists()
+    ]
 
-    return JSONResponse(result)
+    return JobDownloadsOut(root=downloads)
 
 
 @app.get("/jobs/{job_id}/download/{key}", dependencies=[Depends(verify_api_key)])
-def download_output(job_id: str, key: str):
+def download_output(job_id: str, key: str) -> FileResponse:
     with JOBS_LOCK:
         job = JOBS.get(job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="job not found")
+        raise HTTPException(status_code=404, detail="Job not found")
     if job.get("status") != "done":
-        raise HTTPException(status_code=409, detail=f"job not finished (status={job.get('status')})")
+        raise HTTPException(status_code=409, detail=f"Job not finished (status={job.get('status')})")
 
     outputs: dict[str, str] = job.get("outputs") or {}
     path_str = outputs.get(key)
     if not path_str:
-        raise HTTPException(status_code=404, detail=f"key not found")
+        raise HTTPException(status_code=404, detail=f"Key not found")
 
     out_path = Path(path_str)
     if not out_path.exists():
-        raise HTTPException(status_code=500, detail="file not found")
+        raise HTTPException(status_code=500, detail="File not found")
 
     return FileResponse(out_path, filename=out_path.name)
 
@@ -353,6 +372,6 @@ async def ws_job_done(websocket: WebSocket, job_id: str):
                     break
             await asyncio.sleep(1)
 
-        await websocket.send_json({k: v for k, v in job.items() if k in {"job_id", "status", "step", "created_at", "started_at", "error", "finished_at"}})
+        await websocket.send_json(JobStatusOut(**job).model_dump(exclude_none=True))
     finally:
         await websocket.close()
