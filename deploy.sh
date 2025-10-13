@@ -46,7 +46,6 @@ else
   git checkout "$GIT_BRANCH"
   git reset --hard origin/"$GIT_BRANCH"
   git clean -fd
-  git pull --tags
 fi
 EOF
 
