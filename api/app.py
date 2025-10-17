@@ -162,7 +162,7 @@ def delete_old_jobs():
     for job_dir in JOBS_DIR.iterdir():
         if job_dir.is_dir():
             created_at = datetime.fromtimestamp(job_dir.stat().st_ctime, tz=timezone.utc)
-            if (now - created_at).total_seconds() > 24 * 3600:
+            if (now - created_at).total_seconds() > 31 * 24 * 3600:
                 shutil.rmtree(job_dir, ignore_errors=True)
 
 
@@ -174,7 +174,7 @@ def delete_old_jobs_periodically():
         with JOBS_LOCK:
             for job_id, job in list(JOBS.items()):
                 created_at = datetime.fromisoformat(job["created_at"])
-                if (now - created_at).total_seconds() > 24 * 3600:
+                if (now - created_at).total_seconds() > 31 * 24 * 3600:
                     shutil.rmtree(Path(job["job_dir"]), ignore_errors=True)
                     JOBS.pop(job_id, None)
 
